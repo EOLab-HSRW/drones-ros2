@@ -1,0 +1,46 @@
+<robot name="phoenix" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:property name="root_frame" value="base_link"/>
+
+  <xacro:include filename="$(find eolab_description)/macros/core_sensors.xacro"/>
+
+  <xacro:core_sensors link="${root_frame}"/>
+
+  <xacro:macro name="box_inertia" params="m w h d">
+    <inertial>
+      <origin xyz="0 0 0" rpy="${pi/2} 0 ${pi/2}"/>
+      <mass value="${m}"/>
+      <inertia ixx="${(m/12) * (h*h + d*d)}" ixy="0.0" ixz="0.0" iyy="${(m/12) * (w*w + d*d)}" iyz="0.0" izz="${(m/12) * (w*w + h*h)}"/>
+    </inertial>
+  </xacro:macro>
+
+  <!-- TODOs: -->
+  <!-- add inertial and mass -->
+
+
+  <link name="${root_frame}">
+    <visual>
+      <geometry>
+        <box size="0.3 0.3 0.3"/>
+      </geometry>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="0.3 0.3 0.3"/>
+      </geometry>
+    </collision>
+    <xacro:box_inertia m="2" w="0.3" h="0.3" d="0.3"/>
+  </link>
+
+    <link name="base_footprint">
+      <xacro:box_inertia m="0.5" w="0.01" d="0.01" h="0.01"/>
+    </link>
+
+    <joint name="base_joint" type="fixed">
+      <parent link="${root_frame}" />
+      <child link="base_footprint" />
+      <origin xyz="0 0 0" rpy="0 0 0" />
+    </joint>
+
+
+</robot>

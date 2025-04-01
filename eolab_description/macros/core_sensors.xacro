@@ -1,0 +1,137 @@
+<robot name="core_sensors" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- link: name of the link to attach all the sensors -->
+  <xacro:macro name="core_sensors" params="link">
+
+    <gazebo>
+      <plugin filename="gz-sim-air-pressure-system"
+        name="gz::sim::systems::AirPressure">
+      </plugin>
+      <plugin filename="gz-sim-air-speed-system"
+        name="gz::sim::systems::AirSpeed">
+      </plugin>
+      <plugin filename="gz-sim-navsat-system"
+        name="gz::sim::systems::NavSat">
+      </plugin>
+      <plugin filename="gz-sim-magnetometer-system"
+        name="gz::sim::systems::Magnetometer">
+      </plugin>
+      <plugin filename="gz-sim-sensors-system"
+        name="gz::sim::systems::Sensors">
+        <!-- TODO harley: check how good ogre2 is performing -->
+        <!-- <render_engine>ogre2</render_engine> -->
+        <render_engine>ogre</render_engine>
+      </plugin>
+
+      <!-- TODO harley: this looks like custom plugins, check if required -->
+      <!-- <plugin entity_name="*" entity_type="world" filename="libOpticalFlowSystem.so" name="custom::OpticalFlowSystem"/> -->
+      <!-- <plugin entity_name="*" entity_type="world" filename="libGstCameraSystem.so" name="custom::GstCameraSystem"/> -->
+    </gazebo>
+
+
+    <!-- ALL sensors are attach to the "link" property -->
+    <!-- this reference is important to go from XACRO->URDF->SDF -->
+    <gazebo reference="${link}">
+
+      <sensor name="air_pressure_sensor" type="air_pressure">
+        <always_on>1</always_on>
+        <update_rate>50</update_rate>
+        <air_pressure>
+          <!-- Noise modeled after BMP390 -->
+          <pressure>
+            <noise type="gaussian">
+              <mean>0</mean>
+              <stddev>3</stddev>
+            </noise>
+          </pressure>
+        </air_pressure>
+      </sensor>
+
+      <sensor name="magnetometer_sensor" type="magnetometer">
+        <always_on>1</always_on>
+        <update_rate>100</update_rate>
+        <magnetometer>
+          <!-- TODO: update to fix units and coordinate system when we move past Harmonic -->
+          <!-- See https://github.com/gazebosim/gz-sim/pull/2460 -->
+          <!-- 3mgauss RMS: NOTE: noise is in tesla but sensor reports data in gauss -->
+          <!-- Noise modeled after IIS2MDC -->
+          <x>
+            <noise type="gaussian">
+              <stddev>0.0001</stddev>
+            </noise>
+          </x>
+          <y>
+            <noise type="gaussian">
+              <stddev>0.0001</stddev>
+            </noise>
+          </y>
+          <z>
+            <noise type="gaussian">
+              <stddev>0.0001</stddev>
+            </noise>
+          </z>
+        </magnetometer>
+      </sensor>
+
+      <sensor name="imu_sensor" type="imu">
+        <always_on>1</always_on>
+        <update_rate>250</update_rate>
+        <imu>
+          <angular_velocity>
+            <!-- Noise modeled after IIM42653 -->
+            <!-- 0.05 deg/s converted to rad/s -->
+            <x>
+              <noise type="gaussian">
+                <mean>0.0</mean>
+                <stddev>0.0008726646</stddev>
+              </noise>
+            </x>
+            <y>
+              <noise type="gaussian">
+                <mean>0.0</mean>
+                <stddev>0.0008726646</stddev>
+              </noise>
+            </y>
+            <z>
+              <noise type="gaussian">
+                <mean>0.0</mean>
+                <stddev>0.0008726646</stddev>
+              </noise>
+            </z>
+          </angular_velocity>
+          <linear_acceleration>
+            <!-- Noise modeled after IIM42653 -->
+            <!-- X & Y axis: 0.65 mg-rms converted to m/ss -->
+            <x>
+              <noise type="gaussian">
+                <mean>0.0</mean>
+                <stddev>0.00637</stddev>
+              </noise>
+            </x>
+            <y>
+              <noise type="gaussian">
+                <mean>0.0</mean>
+                <stddev>0.00637</stddev>
+              </noise>
+            </y>
+            <!-- Z axis: 0.70 mg-rms converted to m/ss-->
+            <z>
+              <noise type="gaussian">
+                <mean>0.0</mean>
+                <stddev>0.00686</stddev>
+              </noise>
+            </z>
+          </linear_acceleration>
+        </imu>
+      </sensor>
+
+      <sensor name="navsat_sensor" type="navsat">
+        <always_on>1</always_on>
+        <update_rate>30</update_rate>
+      </sensor>
+
+    </gazebo>
+  </xacro:macro>
+
+
+</robot>
