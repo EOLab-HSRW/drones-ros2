@@ -46,7 +46,10 @@
             <specular>0.8 0.8 0.8 1</specular>
           </material>
         </visual>
-        <pose>0 0 0 0 -0 0</pose>
+        <!-- hack: change the ground plane position -->
+        <!-- due to xomplexity to spawn the robot in -->
+        <!-- a different position using gz service -->
+        <pose>0 0 -1 0 -0 0</pose>
         <inertial>
           <pose>0 0 0 0 -0 0</pose>
           <mass>1</mass>
