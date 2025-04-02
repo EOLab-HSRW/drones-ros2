@@ -20,6 +20,14 @@ def launch_args(context):
 
     declared_args.append(
         DeclareLaunchArgument(
+            name="frame_id",
+            default_value="22103",
+            description="Drone Frame ID"
+        )
+    )
+
+    declared_args.append(
+        DeclareLaunchArgument(
             name="world",
             default_value="empty",
             description="Name of the world to launch (without file extension). Only the ones in our worlds folder."
@@ -93,7 +101,8 @@ def launch_setup(context):
         additional_env={
             "SYSTEM": "gz",
             "PX4_GZ_STANDALONE": "1",
-            "PX4_SYS_AUTOSTART": "22103",
+            "PX4_UXRCE_DDS_NS": LaunchConfiguration("drone"), # namespace topics
+            "PX4_SYS_AUTOSTART": LaunchConfiguration("frame_id"),
             "PX4_SIMULATOR": "gz",
             "PX4_GZ_WORLD": LaunchConfiguration("world"),
             "PX4_GZ_MODEL_NAME": LaunchConfiguration("drone")
