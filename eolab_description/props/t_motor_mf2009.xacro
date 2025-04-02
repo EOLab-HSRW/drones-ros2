@@ -1,0 +1,52 @@
+<robot name="t_motor_mf2009" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:macro name="t_motor_mf2009" params="number parent direction *origin">
+
+    <!-- Prop diameter: 0.5158 m -->
+    <xacro:property name="prop_diameter" value="0.5158"/>
+    <!-- Prop weight:  0.059 kg -->
+    <xacro:property name="prop_weight" value="0.059"/>
+    <!-- Recommended Thrust/RPM: 3.5kg / 4700RPM -->
+    <!-- Recommended Max Thrust/RPM: 9kg / 7000RPM-->
+    <xacro:property name="prop_max_rpm" value="7000"/>
+
+    <link name="rotor_${number}">
+      <visual>
+        <geometry>
+          <box size="${prop_diameter} 0.04 0.01"/>
+        </geometry>
+      </visual>
+      <collision>
+        <geometry>
+          <box size="${prop_diameter} 0.04 0.01"/>
+        </geometry>
+      </collision>
+      <xacro:box_inertia m="${prop_weight}" w="${prop_diameter}" h="0.04" d="0.01"/>
+    </link>
+    <joint name="rotor_${number}_joint" type="continuous">
+      <parent link="${parent}"/>
+      <child link="rotor_${number}"/>
+      <xacro:insert_block name="origin" />
+      <axis xyz="0 0 1"/>
+    </joint>
+    <gazebo>
+      <plugin filename="gz-sim-multicopter-motor-model-system" name="gz::sim::systems::MulticopterMotorModel">
+        <jointName>rotor_${number}_joint</jointName>
+        <linkName>rotor_${number}</linkName>
+        <turningDirection>${direction}</turningDirection>
+        <timeConstantUp>0.0125</timeConstantUp>
+        <timeConstantDown>0.025</timeConstantDown>
+        <maxRotVelocity>${prop_max_rpm}</maxRotVelocity>
+        <motorConstant>8.54858e-06</motorConstant>
+        <momentConstant>0.016</momentConstant>
+        <commandSubTopic>command/motor_speed</commandSubTopic>
+        <motorNumber>${number}</motorNumber>
+        <rotorDragCoefficient>8.06428e-05</rotorDragCoefficient>
+        <rollingMomentCoefficient>1e-06</rollingMomentCoefficient>
+        <rotorVelocitySlowdownSim>10</rotorVelocitySlowdownSim>
+        <motorType>velocity</motorType>
+      </plugin>
+    </gazebo>
+  </xacro:macro>
+
+</robot>

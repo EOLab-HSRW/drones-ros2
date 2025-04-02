@@ -43,7 +43,7 @@ def launch_setup(context):
 
     robot_desc_content = xacro.process_file(
         PathJoinSubstitution(
-            [FindPackageShare("eolab_description"), "xacros", f"{drone_name}.urdf.xacro"]
+            [FindPackageShare("eolab_description"), "drones", f"{drone_name}.urdf.xacro"]
         ).perform(context)
     ).toxml().replace("\n", "") # IMPOTANT TO FLAT the string
 
