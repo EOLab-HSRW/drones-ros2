@@ -25,7 +25,7 @@ def launch_setup(context):
             "gz_sim.launch.py"
         ]),
         launch_arguments={
-            "gz_args": ["-r ", "empty.sdf ", "-v"],
+            "gz_args": ["-r ", f"{PathJoinSubstitution([FindPackageShare('eolab_description'), 'worlds', 'empty.sdf']).perform(context)} ", "-v"],
             "gz_version": "8",
             "on_exit_shutdown": "True",
         }.items()
