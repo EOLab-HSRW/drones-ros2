@@ -15,15 +15,20 @@
   <link name="${root_frame}">
     <visual>
       <geometry>
-        <box size="0.3 0.3 0.3"/>
+        <mesh filename="file://$(find eolab_description)/meshes/phoenix.obj" scale="1 1 1"/>
       </geometry>
     </visual>
     <collision>
       <geometry>
-        <box size="0.3 0.3 0.3"/>
+        <mesh filename="file://$(find eolab_description)/meshes/phoenix.obj" scale="1 1 1"/>
       </geometry>
     </collision>
-    <xacro:box_inertia m="2" w="0.3" h="0.3" d="0.3"/>
+    <!-- <xacro:box_inertia m="2" w="0.3" h="0.3" d="0.3"/> -->
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="4"/>
+      <inertia ixx="0.02" ixy="0" ixz="0" iyy="0.021" iyz="0.0" izz="0.04"/>
+    </inertial>
   </link>
 
   <xacro:core_sensors link="${root_frame}"/>
@@ -69,27 +74,27 @@
   </xacro:macro>
 
   <xacro:phoenix_rotor number="0" parent="${root_frame}" direction="cw">
-    <origin xyz="0.58 0 0.4" rpy="0 0 0"/>
+    <origin xyz="0.58 0 0.05" rpy="0 0 0"/>
   </xacro:phoenix_rotor>
 
   <xacro:phoenix_rotor number="1" parent="${root_frame}" direction="ccw">
-    <origin xyz="-0.58 0 0.4" rpy="0 0 0"/>
+    <origin xyz="-0.58 0 0.05" rpy="0 0 0"/>
   </xacro:phoenix_rotor>
 
   <xacro:phoenix_rotor number="2" parent="${root_frame}" direction="cw">
-    <origin xyz="-0.29 -0.51 0.4" rpy="0 0 0"/>
+    <origin xyz="-0.29 -0.51 0.05" rpy="0 0 0"/>
   </xacro:phoenix_rotor>
 
   <xacro:phoenix_rotor number="3" parent="${root_frame}" direction="ccw">
-    <origin xyz="0.29 0.51 0.4" rpy="0 0 0"/>
+    <origin xyz="0.29 0.51 0.05" rpy="0 0 0"/>
   </xacro:phoenix_rotor>
 
   <xacro:phoenix_rotor number="4" parent="${root_frame}" direction="ccw">
-    <origin xyz="0.29 -0.51 0.4" rpy="0 0 0"/>
+    <origin xyz="0.29 -0.51 0.05" rpy="0 0 0"/>
   </xacro:phoenix_rotor>
 
   <xacro:phoenix_rotor number="5" parent="${root_frame}" direction="cw">
-    <origin xyz="-0.29 0.51 0.4" rpy="0 0 0"/>
+    <origin xyz="-0.29 0.51 0.05" rpy="0 0 0"/>
   </xacro:phoenix_rotor>
 
 </robot>
