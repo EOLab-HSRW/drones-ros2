@@ -14,7 +14,7 @@
 
   <test_depend>check_urdf</test_depend>
   <exec_depend>xacro</exec_depend>
-  <exec_depend>gz_harmonic</exec_depend>
+  <exec_depend>ros_gzharmonic</exec_depend>
 
   <export>
     <build_type>ament_cmake</build_type>
