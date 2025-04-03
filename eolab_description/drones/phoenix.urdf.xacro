@@ -7,7 +7,7 @@
 
   <xacro:macro name="box_inertia" params="m w h d">
     <inertial>
-      <origin xyz="0 0 0" rpy="${pi/2} 0 ${pi/2}"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
       <mass value="${m}"/>
       <inertia ixx="${(m/12) * (h*h + d*d)}" ixy="0.0" ixz="0.0" iyy="${(m/12) * (w*w + d*d)}" iyz="0.0" izz="${(m/12) * (w*w + h*h)}"/>
     </inertial>
@@ -24,38 +24,39 @@
         <mesh filename="file://$(find eolab_description)/drones/meshes/phoenix.obj" scale="1 1 1"/>
       </geometry>
     </collision>
-    <!-- <xacro:box_inertia m="2" w="0.3" h="0.3" d="0.3"/> -->
     <inertial>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <mass value="5.5"/>
-      <inertia ixx="0.02" ixy="0" ixz="0" iyy="0.021" iyz="0.0" izz="0.04"/>
+      <inertia ixx="0.4613" ixy="0" ixz="0" iyy="0.6115" iyz="0.0" izz="1.0669"/>
     </inertial>
   </link>
 
   <xacro:core_sensors link="${root_frame}"/>
 
   <xacro:t_motor_mf2009 number="0" parent="${root_frame}" direction="cw">
-    <origin xyz="0.58 0 0.05" rpy="0 0 0"/>
+    <origin xyz="0 -0.58 0.05" rpy="0 0 0"/>
   </xacro:t_motor_mf2009>
 
   <xacro:t_motor_mf2009 number="1" parent="${root_frame}" direction="ccw">
-    <origin xyz="-0.58 0 0.05" rpy="0 0 0"/>
+    <origin xyz="0 0.58 0.05" rpy="0 0 0"/>
   </xacro:t_motor_mf2009>
 
   <xacro:t_motor_mf2009 number="2" parent="${root_frame}" direction="cw">
-    <origin xyz="-0.29 -0.51 0.05" rpy="0 0 0"/>
+    <origin xyz="0.51 0.29 0.05" rpy="0 0 0"/>
   </xacro:t_motor_mf2009>
 
   <xacro:t_motor_mf2009 number="3" parent="${root_frame}" direction="ccw">
-    <origin xyz="0.29 0.51 0.05" rpy="0 0 0"/>
+    <origin xyz="-0.51 -0.29 0.05" rpy="0 0 0"/>
   </xacro:t_motor_mf2009>
 
   <xacro:t_motor_mf2009 number="4" parent="${root_frame}" direction="ccw">
-    <origin xyz="0.29 -0.51 0.05" rpy="0 0 0"/>
+    <origin xyz="0.51 -0.29 0.05" rpy="0 0 0"/>
   </xacro:t_motor_mf2009>
 
   <xacro:t_motor_mf2009 number="5" parent="${root_frame}" direction="cw">
-    <origin xyz="-0.29 0.51 0.05" rpy="0 0 0"/>
+    <origin xyz="-0.51 0.29 0.05" rpy="0 0 0"/>
   </xacro:t_motor_mf2009>
+
+
 
 </robot>
