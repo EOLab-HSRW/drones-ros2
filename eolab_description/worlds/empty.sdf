@@ -49,7 +49,7 @@
         <!-- hack: change the ground plane position -->
         <!-- due to xomplexity to spawn the robot in -->
         <!-- a different position using gz service -->
-        <pose>0 0 -1 0 -0 0</pose>
+        <pose>0 0 -2.70 0 -0 0</pose>
         <inertial>
           <pose>0 0 0 0 -0 0</pose>
           <mass>1</mass>
@@ -67,6 +67,15 @@
       <pose>0 0 0 0 -0 0</pose>
       <self_collide>false</self_collide>
     </model>
+
+    <include>
+      <name>gfl_outdoor</name>
+      <uri>
+        model://eolab_description/assets/gfl_outdoor/gfl_outdoor.sdf
+      </uri>
+      <pose>0 0 -1.7 0 0 0</pose>
+    </include>
+
     <light name="sunUTC" type="directional">
       <pose>0 0 500 0 -0 0</pose>
       <cast_shadows>true</cast_shadows>
