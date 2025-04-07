@@ -1,3 +1,4 @@
+from os import environ
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, ExecuteProcess, IncludeLaunchDescription, OpaqueFunction, RegisterEventHandler, SetEnvironmentVariable
 from launch.event_handlers import OnProcessExit
@@ -116,15 +117,16 @@ def launch_setup(context):
         )
     )
 
-    # TODO harley: this is just a dirty hacky way to export
-    # GZ_SIM_RESOURCE_PATH to point to the assets folder
-    # this is due to problems with the export tag in the implementation
-    # of ament inside the package.xml
-    path_manual=f"{PathJoinSubstitution([FindPackageShare('eolab_description').perform(context), '..']).perform(context)}/"
+    # TODO harley: this is just a quick fix to export
+    # GZ_SIM_RESOURCE_PATH to point to the `assets` folder of this package.
+    # this is due to problems with the export tag `gazebo_ros` inside the package.xml
+    # the export function to GZ_SIM_RESOURCE_PATH was introduced in 0.244.14
+    # but the default version is 0.244.12 that export to IGN_SIM_RESOURCE_PATH
+    path_to_pkg = PathJoinSubstitution([FindPackageShare('eolab_description'), '..']).perform(context)
 
     export_assets = SetEnvironmentVariable(
         "GZ_SIM_RESOURCE_PATH",
-        value=path_manual
+        value=(environ.get("GZ_SIM_RESOURCE_PATH", default="") + ":" + path_to_pkg)
     )
 
     return [
