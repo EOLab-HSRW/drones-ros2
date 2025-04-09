@@ -14,6 +14,7 @@ find_package(ament_cmake REQUIRED)
 find_package(ament_cmake REQUIRED)
 
 include(ExternalProject)
+include(FetchContent)
 
 find_program(MICRO_XRCE_AGENT_EXECUTABLE MicroXRCEAgent)
 
@@ -34,6 +35,15 @@ if(NOT MICRO_XRCE_AGENT_EXECUTABLE)
 else()
     message(STATUS "MicroXRCEAgent is already installed: ${MICRO_XRCE_AGENT_EXECUTABLE}")
 endif()
+
+FetchContent_Declare(
+    px4_msgs
+    GIT_REPOSITORY https://github.com/PX4/px4_msgs.git
+    GIT_TAG main
+)
+
+# harley: integrated way to fetch the px4_msgs package
+FetchContent_MakeAvailable(px4_msgs)
 
 install(DIRECTORY launch
     DESTINATION share/${PROJECT_NAME})
