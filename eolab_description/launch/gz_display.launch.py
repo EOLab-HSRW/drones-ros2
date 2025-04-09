@@ -97,7 +97,7 @@ def launch_setup(context):
 
     start_px4 = ExecuteProcess(
         name="px4_sitl",
-        cmd=["/home/harley/eolab-git/drones-fw/PX4-Autopilot/build/px4_sitl_phoenix/bin/px4"],
+        cmd=[f"/home/harley/eolab-git/drones-fw/PX4-Autopilot/build/px4_sitl_{drone_name}/bin/px4"],
         output="both",
         additional_env={
             "SYSTEM": "gz",
