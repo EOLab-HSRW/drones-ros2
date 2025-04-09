@@ -5,5 +5,7 @@
 ```
 mkdir -p ~/eolab_ws/src
 git clone https://github.com/EOLab-HSRW/drones-ros2.git
-cd drones-ros2
+cd ~/eolab_ws
+colcon build --symlink-install
+source install/setup.bash
 ```
