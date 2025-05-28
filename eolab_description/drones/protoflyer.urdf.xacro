@@ -29,7 +29,7 @@
     <inertial>
       <!-- <origin xyz="0 0 0" rpy="0 0 ${pi/2}"/> -->
       <!-- TODO harley: add battery weight -->
-      <mass value="1.5"/>
+      <mass value="0.5"/>
       <!-- <inertia ixx="1.552e7" ixy="0.003" ixz="0" iyy="1.549e7" iyz="0.003" izz="3.068e7"/> -->
       <inertia ixx="1.552e7" ixy="0.003" ixz="0" iyy="1.549e7" iyz="0.003" izz="3.068e7"/>
     </inertial>
