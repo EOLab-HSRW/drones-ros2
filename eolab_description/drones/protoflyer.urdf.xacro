@@ -43,7 +43,7 @@
    name="rgb_camera"
    parent_link="${root_frame}"
    namespace=""
-   system="">
+   system="gz">
     <origin xyz="0 0 -0.05" rpy="0 0 0"/>
   </xacro:rgb_generic>
 
