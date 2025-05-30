@@ -95,12 +95,5 @@
         <falloff>0</falloff>
       </spot>
     </light>
-    <spherical_coordinates>
-      <surface_model>EARTH_WGS84</surface_model>
-      <world_frame_orientation>ENU</world_frame_orientation>
-      <latitude_deg>51.49774739160559</latitude_deg>
-      <longitude_deg>6.5491668247474735</longitude_deg>
-      <elevation>0</elevation>
-    </spherical_coordinates>
   </world>
 </sdf>

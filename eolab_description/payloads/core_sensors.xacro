@@ -32,11 +32,7 @@
         <render_engine>ogre2</render_engine>
       </plugin>
 
-      <!-- TODO harley: this looks like custom plugins, check if required -->
-      <!-- <plugin entity_name="*" entity_type="world" filename="libOpticalFlowSystem.so" name="custom::OpticalFlowSystem"/> -->
-      <!-- <plugin entity_name="*" entity_type="world" filename="libGstCameraSystem.so" name="custom::GstCameraSystem"/> -->
     </gazebo>
-
 
     <!-- ALL sensors are attach to the "link" property -->
     <!-- this reference is important to go from XACRO->URDF->SDF -->
@@ -133,7 +129,6 @@
         <always_on>1</always_on>
         <update_rate>30</update_rate>
       </sensor>
-
     </gazebo>
   </xacro:macro>
 
