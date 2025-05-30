@@ -3,7 +3,9 @@
   <xacro:property name="root_frame" value="base_link"/>
 
   <xacro:include filename="$(find eolab_description)/payloads/core_sensors.xacro"/>
-  <xacro:include filename="$(find eolab_description)/props/dji_e305.xacro"/>
+  <xacro:include filename="$(find eolab_description)/payloads/rgb_generic.xacro"/>
+
+  <xacro:include filename="$(find eolab_description)/propulsions/dji_e305.xacro"/>
 
   <xacro:macro name="box_inertia" params="m w h d">
     <inertial>
@@ -36,6 +38,14 @@
   </link>
 
   <xacro:core_sensors link="${root_frame}"/>
+
+  <xacro:rgb_generic
+   name="rgb_camera"
+   parent_link="${root_frame}"
+   namespace=""
+   system="">
+    <origin xyz="0 0 -0.05" rpy="0 0 0"/>
+  </xacro:rgb_generic>
 
   <xacro:dji_e305 number="0" parent="${root_frame}" direction="ccw">
     <origin xyz="0.158 -0.158 0.05" rpy="0 0 0"/>

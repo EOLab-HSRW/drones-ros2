@@ -3,7 +3,7 @@
   <xacro:property name="root_frame" value="base_link"/>
 
   <xacro:include filename="$(find eolab_description)/payloads/core_sensors.xacro"/>
-  <xacro:include filename="$(find eolab_description)/props/t_motor_mf2009.xacro"/>
+  <xacro:include filename="$(find eolab_description)/propulsions/t_motor_mf2009.xacro"/>
 
   <xacro:macro name="box_inertia" params="m w h d">
     <inertial>
