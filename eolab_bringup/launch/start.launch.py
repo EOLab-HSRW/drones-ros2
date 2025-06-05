@@ -16,7 +16,7 @@ def launch_args(context):
         DeclareLaunchArgument(
             name="drone",
             default_value="protoflyer",
-            choices=list(eolab_drones.get_catalog().keys()),
+            choices=list(eolab_drones.get_drones().keys()),
             description="Name of the drone to launch"
         )
     )
