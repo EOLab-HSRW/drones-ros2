@@ -7,11 +7,13 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+find_package(ament_cmake REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
 
-find_package(ament_cmake REQUIRED)
+execute_process(COMMAND ${Python_EXECUTABLE} -m pip install "git+https://github.com/EOLab-HSRW/drones-fw.git@main")
 
 include(ExternalProject)
 include(FetchContent)
