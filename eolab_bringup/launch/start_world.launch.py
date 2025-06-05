@@ -31,6 +31,9 @@ def launch_setup(context):
         value=(environ.get("GZ_SIM_SERVER_CONFIG_PATH", default=PathJoinSubstitution([FindPackageShare("eolab_description"), "server.config"]).perform(context)))
     )
 
+    if "WSL_DISTRO_NAME" in environ:
+        pass
+
     set_gps_coord = ExecuteProcess(
         name="set_gps_coord",
         cmd=[
@@ -39,6 +42,7 @@ def launch_setup(context):
             "--reptype", "gz.msgs.Boolean",
             "--timeout", "5000",
             "--req", f"surface_model: EARTH_WGS84, latitude_deg: {LaunchConfiguration('lat').perform(context)}, longitude_deg: {LaunchConfiguration('lon').perform(context)}, elevation: {LaunchConfiguration('alt').perform(context)}",
+            # "--render-engine", "ogre"
         ]
     )
 
