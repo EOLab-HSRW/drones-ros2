@@ -16,6 +16,7 @@ def launch_args(context):
         DeclareLaunchArgument(
             name="drone",
             default_value="protoflyer",
+            choices=list(eolab_drones.get_catalog().keys()),
             description="Name of the drone to launch"
         )
     )
@@ -83,15 +84,18 @@ def launch_setup(context):
 
 
     gazebo_world = IncludeLaunchDescription(
-        PathJoinSubstitution([FindPackageShare("eolab_bringup"), "launch", "start_world.launch.py"])
+        PathJoinSubstitution([FindPackageShare("eolab_bringup"), "launch", "start_world.launch.py"]),
+        launch_arguments=[
+            ("drone", LaunchConfiguration("drone"))
+        ]
     )
 
     drone_name = LaunchConfiguration("drone").perform(context)
-    frame_id = eolab_drones.get_frame_id(drone_name)
+    frame_id = str(eolab_drones.get_id(drone_name))
 
     start_px4 = ExecuteProcess(
         name="px4_sitl",
-        cmd=[f"/home/harley/eolab-git/drones-fw/PX4-Autopilot/build/px4_sitl_{drone_name}/bin/px4", "-i", drone_name],
+        cmd=[f"{eolab_drones.get_stil_bin(drone_name)}", "-i", drone_name],
         output="both",
         additional_env={
             "SYSTEM": "gz",

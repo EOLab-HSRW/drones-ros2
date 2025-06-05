@@ -3,8 +3,10 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, ExecuteProcess, IncludeLaunchDescription, OpaqueFunction, SetEnvironmentVariable
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.substitutions import FindPackageShare
+import eolab_drones
 
 def launch_setup(context):
+
 
     # TODO harley: this is just a quick fix to export
     # GZ_SIM_RESOURCE_PATH to point to the `assets` folder of this package.
@@ -18,9 +20,10 @@ def launch_setup(context):
     )
 
     # TODO get the path to the SITL dynamically based on the drones name
+    # OR register plugin during build on PX4 side
     export_plugins = SetEnvironmentVariable(
         "GZ_SIM_SYSTEM_PLUGIN_PATH",
-        value=(environ.get("GZ_SIM_SYSTEM_PLUGIN_PATH", default="") + ":" + r"/home/harley/eolab-git/drones-fw/PX4-Autopilot/build/px4_sitl_protoflyer/src/modules/simulation/gz_plugins")
+        value=(environ.get("GZ_SIM_SYSTEM_PLUGIN_PATH", default="") + ":" + f"{eolab_drones.get_build_dir(LaunchConfiguration('drone').perform(context))}/src/modules/simulation/gz_plugins")
     )
 
     export_server_config = SetEnvironmentVariable(
@@ -64,6 +67,13 @@ def launch_setup(context):
 def generate_launch_description() -> LaunchDescription:
 
     ld = LaunchDescription()
+
+    ld.add_action(
+        DeclareLaunchArgument(
+            name="drone",
+            description="Name of the drone. (TEMPORAL USE) to load gz plugins"
+        )
+    )
 
     ld.add_action(
         DeclareLaunchArgument(
