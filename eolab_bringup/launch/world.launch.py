@@ -1,7 +1,8 @@
-from os import environ
+from os import environ, path
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, ExecuteProcess, IncludeLaunchDescription, OpaqueFunction, SetEnvironmentVariable
-from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, GroupAction, IncludeLaunchDescription, OpaqueFunction, SetEnvironmentVariable, LogInfo
+from launch.conditions import IfCondition
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, PythonExpression
 from launch_ros.substitutions import FindPackageShare
 import eolab_drones
 
@@ -31,8 +32,20 @@ def launch_setup(context):
         value=(environ.get("GZ_SIM_SERVER_CONFIG_PATH", default=PathJoinSubstitution([FindPackageShare("eolab_description"), "server.config"]).perform(context)))
     )
 
-    if "WSL_DISTRO_NAME" in environ:
-        pass
+    gz_args = ["-r ", PathJoinSubstitution([FindPackageShare("eolab_description"), "worlds", f"{LaunchConfiguration('world').perform(context)}.sdf"])]
+    if LaunchConfiguration("verbose").perform(context) == "true":
+        gz_args.append(" -v")
+
+    is_wsl = "true" if path.exists("/proc/sys/fs/binfmt_misc/WSLInterop") else "false"
+
+    wsl_env = GroupAction(
+        actions=[
+            LogInfo(msg="It seems that you are in WSL"),
+            SetEnvironmentVariable("GALLIUM_DRIVER", "d3d12"),
+            SetEnvironmentVariable("MESA_D3D12_DEFAULT_ADAPTER_NAME", "NVIDIA"),
+        ],
+        condition=IfCondition(is_wsl)
+    )
 
     set_gps_coord = ExecuteProcess(
         name="set_gps_coord",
@@ -53,13 +66,14 @@ def launch_setup(context):
             "gz_sim.launch.py"
         ]),
         launch_arguments={
-            "gz_args": ["-r ", PathJoinSubstitution([FindPackageShare("eolab_description"), "worlds", f"{LaunchConfiguration('world').perform(context)}.sdf"]), " -v"],
+            "gz_args": gz_args,
             "gz_version": "8",
             "on_exit_shutdown": "True",
-        }.items()
+        }.items(),
     )
 
     return [
+        wsl_env,
         export_assets,
         export_plugins,
         export_server_config,
@@ -108,6 +122,14 @@ def generate_launch_description() -> LaunchDescription:
             name="alt",
             default_value="26.54",
             description="GPS Coordinate Altitude in WGS84"
+        )
+    )
+
+    ld.add_action(
+        DeclareLaunchArgument(
+            name="verbose",
+            default_value="false",
+            description="Gazebo Verbose ouput"
         )
     )
 

@@ -77,6 +77,14 @@ def launch_args(context):
         )
     )
 
+    declared_args.append(
+        DeclareLaunchArgument(
+            name="verbose",
+            default_value="false",
+            description="Verbose launch."
+        )
+    )
+
     return declared_args
 
 
@@ -84,9 +92,10 @@ def launch_setup(context):
 
 
     gazebo_world = IncludeLaunchDescription(
-        PathJoinSubstitution([FindPackageShare("eolab_bringup"), "launch", "start_world.launch.py"]),
+        PathJoinSubstitution([FindPackageShare("eolab_bringup"), "launch", "world.launch.py"]),
         launch_arguments=[
-            ("drone", LaunchConfiguration("drone"))
+            ("drone", LaunchConfiguration("drone")),
+            ("verbose", LaunchConfiguration("verbose"))
         ]
     )
 
