@@ -1,99 +1,32 @@
-from os import environ
-from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, ExecuteProcess, IncludeLaunchDescription, LogInfo, OpaqueFunction, RegisterEventHandler, SetEnvironmentVariable, GroupAction
-from launch_testing.event_handlers import StdoutReadyListener
-from launch.substitutions import EnvironmentVariable, LaunchConfiguration, PathJoinSubstitution
-from launch_ros.substitutions import FindPackageShare
-from launch_ros.actions import Node
+from re import S
 import xacro
+
 import eolab_drones
 
-def launch_args(context):
+from pathlib import Path
 
-    declared_args = []
+from launch import LaunchDescription
+from launch.action import LaunchContext
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, IncludeLaunchDescription, LogInfo, OpaqueFunction, RegisterEventHandler, SetEnvironmentVariable, GroupAction
+from launch_testing.event_handlers import StdoutReadyListener
+from launch.substitutions import EnvironmentVariable, LaunchConfiguration, PathJoinSubstitution, PythonExpression
+from launch_ros.substitutions import FindPackageShare
+from launch_ros.actions import Node
 
-    declared_args.append(
-        DeclareLaunchArgument(
-            name="drone",
-            default_value="protoflyer",
-            choices=list(eolab_drones.get_drones().keys()),
-            description="Name of the drone to launch"
-        )
+def get_worlds():
+    """
+    Check the worlds directory under eolab_description/worlds
+    and dynamically get the available world choices.
+    """
+    context = LaunchContext()
+
+    worlds_dir = Path(
+        PathJoinSubstitution([
+            FindPackageShare("eolab_description"), "worlds"
+        ]).perform(context)
     )
 
-    declared_args.append(
-        DeclareLaunchArgument(
-            name="alias",
-            default_value=LaunchConfiguration("drone"),
-            description="Set a custom alias name different from the drone name"
-        )
-    )
-
-    declared_args.append(
-        DeclareLaunchArgument(
-            name="x",
-            default_value="0.0",
-            description="X position to spawn the drone in sim"
-        )
-    )
-
-    declared_args.append(
-        DeclareLaunchArgument(
-            name="y",
-            default_value="0.0",
-            description="Y position to spawn the drone in sim"
-        )
-    )
-
-    declared_args.append(
-        DeclareLaunchArgument(
-            name="z",
-            default_value="0.0",
-            description="Z position to spawn the drone in sim"
-        )
-    )
-
-    declared_args.append(
-        DeclareLaunchArgument(
-            name="lat",
-            default_value="51.497741558866004",
-            description="GPS Coordinate Latitude in WGS84"
-        )
-    )
-
-    declared_args.append(
-        DeclareLaunchArgument(
-            name="lon",
-            default_value="6.549182534441797",
-            description="GPS Coordinate Longitude in WGS84"
-        )
-    )
-
-    declared_args.append(
-        DeclareLaunchArgument(
-            name="alt",
-            default_value="26.54",
-            description="GPS Coordinate Altitude in WGS84"
-        )
-    )
-
-    declared_args.append(
-        DeclareLaunchArgument(
-            name="world",
-            default_value="empty",
-            description="Name of the world to launch (without file extension). Only the ones under the `worlds` folder in the pkg `eolab_description`."
-        )
-    )
-
-    declared_args.append(
-        DeclareLaunchArgument(
-            name="verbose",
-            default_value="false",
-            description="Verbose launch."
-        )
-    )
-
-    return declared_args
+    return [world.stem for world in worlds_dir.glob("*.sdf")]
 
 
 def launch_setup(context):
@@ -176,7 +109,68 @@ def generate_launch_description() -> LaunchDescription:
 
     ld = LaunchDescription()
 
-    ld.add_action(OpaqueFunction(function=launch_args))
+    ld.add_action(DeclareLaunchArgument(
+        name="drone",
+        default_value="protoflyer",
+        choices=list(eolab_drones.get_drones().keys()),
+        description="Name of the drone to launch"
+    ))
+
+    ld.add_action(DeclareLaunchArgument(
+        name="alias",
+        default_value=LaunchConfiguration("drone"),
+        description="Set a custom alias name different from the drone name"
+    ))
+
+    ld.add_action(DeclareLaunchArgument(
+        name="x",
+        default_value="0.0",
+        description="X position to spawn the drone in sim"
+    ))
+
+    ld.add_action(DeclareLaunchArgument(
+        name="y",
+        default_value="0.0",
+        description="Y position to spawn the drone in sim"
+    ))
+
+    ld.add_action(DeclareLaunchArgument(
+        name="z",
+        default_value="0.0",
+        description="Z position to spawn the drone in sim"
+    ))
+
+    ld.add_action(DeclareLaunchArgument(
+        name="lat",
+        default_value="51.497741558866004",
+        description="GPS Coordinate Latitude in WGS84"
+    ))
+
+    ld.add_action(DeclareLaunchArgument(
+        name="lon",
+        default_value="6.549182534441797",
+        description="GPS Coordinate Longitude in WGS84"
+    ))
+
+    ld.add_action(DeclareLaunchArgument(
+        name="alt",
+        default_value="26.54",
+        description="GPS Coordinate Altitude in WGS84"
+    ))
+
+    ld.add_action(DeclareLaunchArgument(
+        name="world",
+        default_value="empty",
+        choices=get_worlds(),
+        description="Name of the world to launch (without file extension). Only the ones under the `worlds` folder in the pkg `eolab_description`."
+    ))
+
+    ld.add_action(DeclareLaunchArgument(
+        name="verbose",
+        default_value="false",
+        description="Verbose launch."
+    ))
+
     ld.add_action(OpaqueFunction(function=launch_setup))
 
     return ld
