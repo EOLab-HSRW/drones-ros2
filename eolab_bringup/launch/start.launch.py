@@ -23,6 +23,14 @@ def launch_args(context):
 
     declared_args.append(
         DeclareLaunchArgument(
+            name="alias",
+            default_value=LaunchConfiguration("drone"),
+            description="Set a custom alias name different from the drone name"
+        )
+    )
+
+    declared_args.append(
+        DeclareLaunchArgument(
             name="x",
             default_value="0.0",
             description="X position to spawn the drone in sim"
@@ -94,12 +102,13 @@ def launch_setup(context):
     gazebo_world = IncludeLaunchDescription(
         PathJoinSubstitution([FindPackageShare("eolab_bringup"), "launch", "world.launch.py"]),
         launch_arguments=[
-            ("drone", LaunchConfiguration("drone")),
+            ("drone", LaunchConfiguration("drone")), # we need this here to resolve the SITL plugins for this drone
             ("verbose", LaunchConfiguration("verbose"))
         ]
     )
 
     drone_name = LaunchConfiguration("drone").perform(context)
+    drone_alias = LaunchConfiguration("alias").perform(context)
     frame_id = str(eolab_drones.get_id(drone_name))
 
     start_px4 = ExecuteProcess(
@@ -109,11 +118,11 @@ def launch_setup(context):
         additional_env={
             "SYSTEM": "gz",
             "PX4_GZ_STANDALONE": "1",
-            "PX4_UXRCE_DDS_NS": f"{drone_name}1",
+            "PX4_UXRCE_DDS_NS": f"{drone_alias}",
             "PX4_SYS_AUTOSTART": frame_id,
             "PX4_SIMULATOR": "gz",
             "PX4_GZ_WORLD": LaunchConfiguration("world"),
-            "PX4_GZ_MODEL_NAME": f"{drone_name}1",
+            "PX4_GZ_MODEL_NAME": f"{drone_alias}",
         }
     )
 
@@ -128,7 +137,7 @@ def launch_setup(context):
         package="ros_gz_sim",
         executable="create",
         arguments=[
-            "-name", f"{drone_name}1",
+            "-name", f"{drone_alias}",
             "-string", robot_desc_content,
             "-x", LaunchConfiguration("x"),
             "-y", LaunchConfiguration("y"),
