@@ -7,34 +7,31 @@
 
   <xacro:include filename="$(find eolab_description)/propulsions/dji_e305.xacro"/>
 
-  <xacro:macro name="box_inertia" params="m w h d">
+  <xacro:macro name="box_inertial" params="mass x y z xyz:='0 0 0' rpy:='0 0 0'">
     <inertial>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
-      <mass value="${m}"/>
-      <inertia ixx="${(m/12) * (h*h + d*d)}" ixy="0.0" ixz="0.0" iyy="${(m/12) * (w*w + d*d)}" iyz="0.0" izz="${(m/12) * (w*w + h*h)}"/>
+      <origin xyz="${xyz}" rpy="${rpy}"/>
+
+      <mass value="${mass}"/>
+      <inertia
+        ixx="${(1/12.0)*mass*(y*y + z*z)}"
+        iyy="${(1/12.0)*mass*(x*x + z*z)}"
+        izz="${(1/12.0)*mass*(x*x + y*y)}"
+        ixy="0.0" ixz="0.0" iyz="0.0"/>
     </inertial>
   </xacro:macro>
 
   <link name="${root_frame}">
     <visual>
-      <!-- <origin xyz="0 0 0" rpy="0 0 ${pi/2}"/> -->
       <geometry>
         <mesh filename="file://$(find eolab_description)/drones/meshes/protoflyer.obj" scale="1 1 1"/>
       </geometry>
     </visual>
     <collision>
-      <!-- <origin xyz="0 0 0" rpy="0 0 ${pi/2}"/> -->
       <geometry>
         <box size="0.39 0.39 0.39"/>
       </geometry>
     </collision>
-    <inertial>
-      <!-- <origin xyz="0 0 0" rpy="0 0 ${pi/2}"/> -->
-      <!-- TODO harley: add battery weight -->
-      <mass value="0.5"/>
-      <!-- <inertia ixx="1.552e7" ixy="0.003" ixz="0" iyy="1.549e7" iyz="0.003" izz="3.068e7"/> -->
-      <inertia ixx="1.552e7" ixy="0.003" ixz="0" iyy="1.549e7" iyz="0.003" izz="3.068e7"/>
-    </inertial>
+    <xacro:box_inertial mass="0.5" x="0.4" y="0.4" z="0.4"/>
   </link>
 
   <xacro:core_sensors link="${root_frame}"/>

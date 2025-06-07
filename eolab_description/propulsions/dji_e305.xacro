@@ -20,10 +20,8 @@
           <box size="${prop_diameter} 0.04 0.01"/>
         </geometry>
       </collision>
-      <mass value="${prop_weight}"/>
       <!-- real value heavy-->
-      <!-- <mass value="5.5"/> -->
-      <xacro:box_inertia m="${prop_weight}" w="${prop_diameter}" h="0.04" d="0.01"/>
+      <xacro:box_inertial mass="${prop_weight}" x="${prop_diameter}" y="0.04" z="0.01"/>
     </link>
     <joint name="rotor_${number}_joint" type="continuous">
       <parent link="${parent}"/>
