@@ -11,7 +11,7 @@ find_package(ament_cmake REQUIRED)
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
 
-install(DIRECTORY drones payloads launch worlds propulsions assets
+install(DIRECTORY drones payloads launch worlds propulsions assets gz-configs
     DESTINATION share/${PROJECT_NAME})
 
 install(FILES server.config

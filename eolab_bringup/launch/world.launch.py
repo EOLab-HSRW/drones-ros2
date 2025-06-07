@@ -34,7 +34,9 @@ def launch_setup(context):
 
     gz_args = ["-r ", PathJoinSubstitution([FindPackageShare("eolab_description"), "worlds", f"{LaunchConfiguration('world').perform(context)}.sdf"])]
     if LaunchConfiguration("verbose").perform(context) == "true":
-        gz_args.append(" -v")
+        gz_args.extend([" -v", " --gui-config ", PathJoinSubstitution([FindPackageShare("eolab_description"), "gz-configs", "debug-gui.config"]).perform(context)])
+    else:
+        gz_args.extend([" --gui-config ", PathJoinSubstitution([FindPackageShare("eolab_description"), "gz-configs", "minimal-gui.config"]).perform(context)])
 
     is_wsl = "true" if path.exists("/proc/sys/fs/binfmt_misc/WSLInterop") else "false"
 
