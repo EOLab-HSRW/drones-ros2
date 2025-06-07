@@ -44,7 +44,7 @@
    parent_link="${root_frame}"
    namespace=""
    system="gz">
-    <origin xyz="0 0 -0.05" rpy="0 0 0"/>
+    <origin xyz="0 0 -0.05" rpy="0 ${radians(90)} 0"/>
   </xacro:rgb_generic>
 
   <xacro:dji_e305 number="0" parent="${root_frame}" direction="ccw">
