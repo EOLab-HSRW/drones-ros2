@@ -136,7 +136,7 @@ def generate_launch_description() -> LaunchDescription:
 
     ld.add_action(DeclareLaunchArgument(
         name="z",
-        default_value="0.0",
+        default_value="0.5",
         description="Z position to spawn the drone in sim"
     ))
 
