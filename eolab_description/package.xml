@@ -12,9 +12,10 @@
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
 
-  <test_depend>check_urdf</test_depend>
+  <test_depend>urdfdom</test_depend>
+  <exec_depend>urdf</exec_depend>
   <exec_depend>xacro</exec_depend>
-  <exec_depend>ros_gzharmonic</exec_depend>
+  <exec_depend>ros_gz</exec_depend>
 
   <export>
     <build_type>ament_cmake</build_type>
