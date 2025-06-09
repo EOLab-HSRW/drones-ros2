@@ -30,22 +30,26 @@ if(NOT MICRO_XRCE_AGENT_EXECUTABLE)
         PREFIX ${CMAKE_BINARY_DIR}/Micro-XRCE-DDS-Agent
         CMAKE_ARGS 
             -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}
-            -DCMAKE_CXX_FLAGS="-Wno-dev" # harley: to silent some dev warnings
-            -DCMAKE_C_FLAGS="-Wno-dev"
+            -DCMAKE_SUPPRESS_DEVELOPER_WARNINGS=1
     )
 
 else()
     message(STATUS "MicroXRCEAgent is already installed: ${MICRO_XRCE_AGENT_EXECUTABLE}")
 endif()
 
-FetchContent_Declare(
-    px4_msgs
-    GIT_REPOSITORY https://github.com/PX4/px4_msgs.git
-    GIT_TAG main
-)
-
-# harley: integrated way to fetch the px4_msgs package
-FetchContent_MakeAvailable(px4_msgs)
+# set(PX4_MSGS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../px4_msgs)
+#
+# ExternalProject_Add(
+#     px4_msgs
+#     GIT_REPOSITORY https://github.com/PX4/px4_msgs.git
+#     GIT_TAG main
+#     PREFIX ${CMAKE_BINARY_DIR}/px4_msgs
+#     SOURCE_DIR ${PX4_MSGS_DIR}
+#     PATCH_COMMAND eolab_drones build --type sitl --drone protoflyer --msgs-output ${PX4_MSGS_DIR}
+#     CMAKE_ARGS 
+#         -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}
+#         -DCMAKE_SUPPRESS_DEVELOPER_WARNINGS=1
+# )
 
 install(DIRECTORY launch
     DESTINATION share/${PROJECT_NAME})
