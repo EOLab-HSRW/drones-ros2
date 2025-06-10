@@ -1,17 +1,13 @@
-from re import S
-import xacro
-
 import eolab_drones
 
 from pathlib import Path
 
 from launch import LaunchDescription
 from launch.action import LaunchContext
-from launch.actions import DeclareLaunchArgument, ExecuteProcess, IncludeLaunchDescription, LogInfo, OpaqueFunction, RegisterEventHandler, SetEnvironmentVariable, GroupAction
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, IncludeLaunchDescription, LogInfo, OpaqueFunction, RegisterEventHandler
 from launch_testing.event_handlers import StdoutReadyListener
-from launch.substitutions import EnvironmentVariable, LaunchConfiguration, PathJoinSubstitution, PythonExpression
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.substitutions import FindPackageShare
-from launch_ros.actions import Node
 
 def get_worlds():
     """
@@ -40,44 +36,17 @@ def launch_setup(context):
         ]
     )
 
-    drone_name = LaunchConfiguration("drone").perform(context)
-    drone_alias = LaunchConfiguration("alias").perform(context)
-    frame_id = str(eolab_drones.get_id(drone_name))
-
-    start_px4 = ExecuteProcess(
-        name="px4_sitl",
-        cmd=[f"{eolab_drones.get_stil_bin(drone_name)}", "-i", drone_name],
-        output="both",
-        additional_env={
-            "SYSTEM": "gz",
-            "PX4_GZ_STANDALONE": "1",
-            "PX4_UXRCE_DDS_NS": f"{drone_alias}",
-            "PX4_SYS_AUTOSTART": frame_id,
-            "PX4_SIMULATOR": "gz",
-            "PX4_GZ_WORLD": LaunchConfiguration("world"),
-            "PX4_GZ_MODEL_NAME": f"{drone_alias}",
-        }
-    )
-
-
-    robot_desc_content = xacro.process_file(
-        PathJoinSubstitution(
-            [FindPackageShare("eolab_description"), "drones", f"{drone_name}.urdf.xacro"]
-        ).perform(context)
-    ).toxml().replace("\n", "") # IMPOTANT TO FLAT the string to remove newline characters
-
-    spawn_drone = Node(
-        package="ros_gz_sim",
-        executable="create",
-        arguments=[
-            "-name", f"{drone_alias}",
-            "-string", robot_desc_content,
-            "-x", LaunchConfiguration("x"),
-            "-y", LaunchConfiguration("y"),
-            "-z", LaunchConfiguration("z"),
-            # "-world", LaunchConfiguration("world") # TODO: check if required
-        ],
-        output='both'
+    spawn_drone = IncludeLaunchDescription(
+        PathJoinSubstitution([FindPackageShare("eolab_bringup"), "launch", "drone_spawn.launch.py"]),
+        launch_arguments=[
+            ("world", LaunchConfiguration("world")),
+            ("drone", LaunchConfiguration("drone")),
+            ("alias", LaunchConfiguration("drone")),
+            ("instance", LaunchConfiguration("instance")),
+            ("x", LaunchConfiguration("x")),
+            ("y", LaunchConfiguration("y")),
+            ("z", LaunchConfiguration("z")),
+        ]
     )
 
     start_agent = ExecuteProcess(
@@ -85,23 +54,26 @@ def launch_setup(context):
         output="both"
     )
 
-    wait_for_sitl_ready = RegisterEventHandler(
-        StdoutReadyListener(
-            target_action=start_px4,
-            ready_txt="INFO  [init] Standalone PX4 launch, waiting for Gazebo",
-            actions=[
-                LogInfo(msg="Got SITL firmware running..."),
-                gazebo_world,
-                spawn_drone,
-                start_agent
-            ]
-        )
-    )
+    # Note: Now that the logic to start the SITL is in a launch file
+    # it is not possible to registed this RegisterEventHandler
+    # wait_for_sitl_ready = RegisterEventHandler(
+    #     StdoutReadyListener(
+    #         target_action=spawn_drone,
+    #         ready_txt="INFO  [init] Standalone PX4 launch, waiting for Gazebo",
+    #         actions=[
+    #             LogInfo(msg="Got SITL firmware running..."),
+    #             gazebo_world,
+    #             start_agent
+    #         ]
+    #     )
+    # )
 
 
     return [
-        start_px4,
-        wait_for_sitl_ready,
+        spawn_drone,
+        gazebo_world,
+        start_agent,
+        # wait_for_sitl_ready,
     ]
 
 
@@ -123,6 +95,12 @@ def generate_launch_description() -> LaunchDescription:
     ))
 
     ld.add_action(DeclareLaunchArgument(
+        name="instance",
+        default_value="0",
+        description="Drone instance."
+    ))
+
+    ld.add_action(DeclareLaunchArgument(
         name="x",
         default_value="0.0",
         description="X position to spawn the drone in sim"
@@ -136,7 +114,7 @@ def generate_launch_description() -> LaunchDescription:
 
     ld.add_action(DeclareLaunchArgument(
         name="z",
-        default_value="0.5",
+        default_value="0.8",
         description="Z position to spawn the drone in sim"
     ))
 
