@@ -25,11 +25,14 @@ if(NOT MICRO_XRCE_AGENT_EXECUTABLE)
 
     ExternalProject_Add(
         Micro-XRCE-DDS-Agent
-        GIT_REPOSITORY https://github.com/eProsima/Micro-XRCE-DDS-Agent.git
-        GIT_TAG v2.4.3
+        GIT_REPOSITORY https://github.com/harleylara/Micro-XRCE-DDS-Agent.git
+        GIT_TAG v2.4.2
         PREFIX ${CMAKE_BINARY_DIR}/Micro-XRCE-DDS-Agent
         CMAKE_ARGS 
             -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}
+            # -DUAGENT_USE_SYSTEM_FASTDDS=ON
+            # -DUAGENT_USE_SYSTEM_FASTCDR=ON
+            # -DCMAKE_BUILD_TYPE=Release
             -DCMAKE_SUPPRESS_DEVELOPER_WARNINGS=1
     )
 
