@@ -5,9 +5,11 @@ from pathlib import Path
 from launch import LaunchDescription
 from launch.action import LaunchContext
 from launch.actions import DeclareLaunchArgument, ExecuteProcess, IncludeLaunchDescription, LogInfo, OpaqueFunction, RegisterEventHandler
+from launch.conditions import IfCondition
 from launch_testing.event_handlers import StdoutReadyListener
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.substitutions import FindPackageShare
+from launch_ros.actions import Node
 
 def get_worlds():
     """
@@ -61,6 +63,22 @@ def launch_setup(context):
         output="both"
     )
 
+    start_rviz = Node(
+        name="rviz2",
+        package="rviz2",
+        executable="rviz2",
+        condition=IfCondition(LaunchConfiguration("rviz")),
+        arguments=["-d", PathJoinSubstitution([FindPackageShare("eolab_bringup"), "rviz", "default.rviz"])]
+    )
+
+    start_pose = Node(
+        name="pose_node",
+        namespace=LaunchConfiguration("alias"),
+        package="eolab_utils",
+        executable="pose",
+        output="both"
+    )
+
     # Note: Now that the logic to start the SITL is in a launch file
     # it is not possible to registed this RegisterEventHandler
     # wait_for_sitl_ready = RegisterEventHandler(
@@ -80,6 +98,8 @@ def launch_setup(context):
         spawn_drone,
         gazebo_world,
         start_agent,
+        start_rviz,
+        start_pose,
     ]
 
 
@@ -153,6 +173,12 @@ def generate_launch_description() -> LaunchDescription:
         name="verbose",
         default_value="false",
         description="Verbose launch."
+    ))
+
+    ld.add_action(DeclareLaunchArgument(
+        name="rviz",
+        default_value="true",
+        description="Start RVIZ."
     ))
 
     ld.add_action(OpaqueFunction(function=launch_setup))

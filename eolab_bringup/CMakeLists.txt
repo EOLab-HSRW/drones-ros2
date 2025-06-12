@@ -54,7 +54,7 @@ endif()
 #         -DCMAKE_SUPPRESS_DEVELOPER_WARNINGS=1
 # )
 
-install(DIRECTORY launch
+install(DIRECTORY launch rviz
     DESTINATION share/${PROJECT_NAME})
 
 if(BUILD_TESTING)
