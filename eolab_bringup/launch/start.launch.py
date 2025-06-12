@@ -49,21 +49,15 @@ def launch_setup(context):
         ]
     )
 
-    spawn_drone1 = IncludeLaunchDescription(
-        PathJoinSubstitution([FindPackageShare("eolab_bringup"), "launch", "drone_spawn.launch.py"]),
-        launch_arguments=[
-            ("world", LaunchConfiguration("world")),
-            ("drone", LaunchConfiguration("drone")),
-            ("alias", f"{LaunchConfiguration('drone').perform(context)}2"),
-            ("instance", "2"),
-            ("x", "2.0"),
-            ("y", "0.0"),
-            ("z", LaunchConfiguration("z")),
-        ]
-    )
+    agent_cmd = ["MicroXRCEAgent", "udp4", "-p", "8888"]
+
+    if LaunchConfiguration("verbose").perform(context) == "true":
+        agent_cmd.extend(["-v", "4"])
+    else:
+        agent_cmd.extend(["-v", "1"])
 
     start_agent = ExecuteProcess(
-        cmd=["MicroXRCEAgent", "udp4", "-p", "8888"],
+        cmd=agent_cmd,
         output="both"
     )
 
@@ -84,10 +78,8 @@ def launch_setup(context):
 
     return [
         spawn_drone,
-        # spawn_drone1,
         gazebo_world,
         start_agent,
-        # wait_for_sitl_ready,
     ]
 
 
