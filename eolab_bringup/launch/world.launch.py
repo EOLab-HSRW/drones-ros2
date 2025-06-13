@@ -80,7 +80,7 @@ def launch_setup(context):
         export_plugins,
         export_server_config,
         set_gps_coord,
-        gz
+        gz,
     ]
 
 
@@ -92,6 +92,12 @@ def generate_launch_description() -> LaunchDescription:
         DeclareLaunchArgument(
             name="drone",
             description="Name of the drone. (TEMPORAL USE) to load gz plugins"
+        )
+    )
+
+    ld.add_action(
+        DeclareLaunchArgument(
+            name="system",
         )
     )
 

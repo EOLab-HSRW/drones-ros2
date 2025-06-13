@@ -14,6 +14,7 @@ def launch_setup(context):
     - add mechanism to launch sim or physical
     """
 
+    world = LaunchConfiguration("world").perform(context)
     drone_name = LaunchConfiguration("drone").perform(context)
     drone_alias = LaunchConfiguration("alias").perform(context)
     instance = LaunchConfiguration("instance").perform(context)
@@ -53,9 +54,34 @@ def launch_setup(context):
         output='both'
     )
 
+    bridge_gz_topics = Node(
+        package='ros_gz_bridge',
+        executable='parameter_bridge',
+        arguments=[
+            '/clock@rosgraph_msgs/msg/Clock[ignition.msgs.Clock',
+            f'/world/{world}/model/{drone_alias}/link/base_link/sensor/rgb_camera_sensor/image@sensor_msgs/msg/Image[ignition.msgs.Image',
+            f'/world/{world}/model/{drone_alias}/link/base_link/sensor/rgb_camera_sensor/camera_info@sensor_msgs/msg/CameraInfo[ignition.msgs.CameraInfo',
+            # f'/{LaunchConfiguration("robot_name").perform(context)}/imu_sensor/imu@sensor_msgs/msg/Imu[gz.msgs.IMU',
+            # f'/{LaunchConfiguration("robot_name").perform(context)}/lidar_sensor/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan',
+        ],
+        # parameters=[
+        #     {"use_sim_time": LaunchConfiguration("use_sim_time")}
+        # ],
+        remappings=[
+            (f'/world/{world}/model/{drone_alias}/link/base_link/sensor/rgb_camera_sensor/image', f'/{drone_alias}/image'),
+            (f'/world/{world}/model/{drone_alias}/link/base_link/sensor/rgb_camera_sensor/camera_info', f'/{drone_alias}/camera_info')
+        ],
+        # NOTE (harley): the expansion of gz topic only works for 1 level higher
+        # parameters=[
+        #     {"expand_gz_topic_names": True}
+        # ],
+        output='screen'
+    )
+
     return [
         start_px4,
         spawn_drone,
+        bridge_gz_topics,
     ]
 
 

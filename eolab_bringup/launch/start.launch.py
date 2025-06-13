@@ -34,7 +34,8 @@ def launch_setup(context):
         PathJoinSubstitution([FindPackageShare("eolab_bringup"), "launch", "world.launch.py"]),
         launch_arguments=[
             ("drone", LaunchConfiguration("drone")), # we need this here to resolve the SITL plugins for this drone
-            ("verbose", LaunchConfiguration("verbose"))
+            ("verbose", LaunchConfiguration("verbose")),
+            ("system", LaunchConfiguration("system"))
         ]
     )
 
@@ -106,6 +107,13 @@ def launch_setup(context):
 def generate_launch_description() -> LaunchDescription:
 
     ld = LaunchDescription()
+
+    ld.add_action(DeclareLaunchArgument(
+        name="system",
+        default_value="gz",
+        choices=["gz", "physical"],
+        description="Select the components depending on this argument. "
+    ))
 
     ld.add_action(DeclareLaunchArgument(
         name="drone",
