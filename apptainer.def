@@ -1,0 +1,35 @@
+BootStrap: docker
+From: osrf/ros:humble-desktop-full
+
+%post
+    # Install prerequisites
+    apt-get update && apt-get install -y \
+        curl \
+        wget \
+        gpg \
+        software-properties-common
+
+    # Install ros dependencies
+    apt-get update && apt-get install -y \
+        ros-humble-ros-gzharmonic-ros
+
+    # Clean up to reduce image size
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+%environment
+    export PATH="/usr/bin:$PATH"
+    export PS1="eolab drones> "
+
+
+%runscript
+    cd ~
+    exec /bin/bash "$@"
+
+
+%labels
+    Harley Lara
+    Version 1.0
+    Description "Base image with ROS2 humble and tooling"
+
+%help
+    This is the base container for EOLab drone systems.
