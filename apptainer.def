@@ -11,7 +11,7 @@ From: osrf/ros:humble-desktop-full
 
     # Install ros dependencies
     apt-get update && apt-get install -y \
-        ros-humble-ros-gzharmonic-ros
+        ros-humble-ros-gzharmonic-sim
 
     # Clean up to reduce image size
     apt-get clean && rm -rf /var/lib/apt/lists/*
