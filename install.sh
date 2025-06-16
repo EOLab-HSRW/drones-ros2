@@ -73,7 +73,7 @@ setup_workspace() {
     WORKSPACE="$HOME/eolab_ws"
     mkdir -p ~/eolab_ws/src && cd ~/eolab_ws/src/
     git clone https://github.com/EOLab-HSRW/drones-ros2.git
-    cd drones-ros2
+    cd drones-ros2 && git pull origin main
     echo $PWD
     apptainer build eolab.sif apptainer.def
     apptainer exec eolab.sif bash -c "source /opt/ros/humble/setup.bash && cd ~/eolab_ws/src/drones-ros2/ && vcs import < .repos"
