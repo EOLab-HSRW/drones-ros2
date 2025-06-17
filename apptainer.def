@@ -6,7 +6,6 @@ From: osrf/ros:humble-desktop-full
     apt-get update && apt-get install -y \
         curl \
         wget \
-        gpg \
         python3 \
         python3-pip \
         software-properties-common
@@ -27,24 +26,18 @@ while echo "$1" | grep -q '='; do
     shift
 done
 
-# Execute the actual command with env vars set
-
 eval $ENV_VARS exec "$@"
 EOF
     chmod +x /usr/bin/sudo
 
     eolab_drones build --type sitl --drone protoflyer --overwrite
 
-    # Install ros dependencies
-    # apt-get update && apt-get install -y \
-    #    ros-humble-ros-gzharmonic-sim
-
     # Clean up to reduce image size
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 %environment
-    export PATH="/usr/bin:$PATH"
-    export PS1="[EOLab Drones] > "
+    export PS1="[EOLab Drones] \w > "
+    # export PATH="/usr/bin:$PATH"
 
 
 %runscript
@@ -55,7 +48,7 @@ EOF
 %labels
     Harley Lara
     Version 1.0
-    Description "Base image with ROS2 humble and tooling"
+    Description "EOLab development image with ROS2 humble and PX4 SITL"
 
 %help
     This is the base container for EOLab drone systems.
