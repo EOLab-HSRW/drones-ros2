@@ -73,6 +73,7 @@ setup_workspace() {
     git clone https://github.com/EOLab-HSRW/drones-ros2.git
     cd drones-ros2 && git pull origin main
     apptainer build eolab.sif apptainer.def
+    apptainer exec eolab.sif bash -c "source /opt/ros/humble/setup.bash && cd ~/eolab_ws/src/drones-ros2/ && vcs import < .repos"
 }
 
 install_dependencies
