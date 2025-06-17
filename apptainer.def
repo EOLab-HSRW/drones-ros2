@@ -9,6 +9,9 @@ From: osrf/ros:humble-desktop-full
         gpg \
         software-properties-common
 
+    # Install pip dependencies
+    pip install vcstool git+https://github.com/EOLab-HSRW/drones-fw.git@main#egg=eolab_drones
+
     # Install ros dependencies
     # apt-get update && apt-get install -y \
     #    ros-humble-ros-gzharmonic-sim

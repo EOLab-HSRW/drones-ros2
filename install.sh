@@ -65,8 +65,6 @@ install_dependencies() {
             ;;
     esac
 
-    # common packages
-    pip install vcstool git+https://github.com/EOLab-HSRW/drones-fw.git@main#egg=eolab_drones
 }
 
 setup_workspace() {
@@ -77,9 +75,8 @@ setup_workspace() {
     echo $PWD
     apptainer build eolab.sif apptainer.def
     apptainer exec eolab.sif bash -c "source /opt/ros/humble/setup.bash && cd ~/eolab_ws/src/drones-ros2/ && vcs import < .repos"
-    eolab_drones build --type sitl --drone protoflyer --msgs-output ~/eolab_ws/src/drones-ros2/px4_msgs
-    apptainer exec eolab.sif bash -c "source /opt/ros/humble/setup.bash && cd ~/eolab_ws/ && rosdep install -i --from-path src --rosdistro $ROS_DISTRO -y"
-    apptainer exec eolab.sif bash -c "source /opt/ros/humble/setup.bash && cd ~/eolab_ws/ && rosdep install -i --from-path src --rosdistro $ROS_DISTRO -y"
+    apptainer exec eolab.sif bash -c "cd ~/eolab_ws/src/drones-ros2/ && eolab_drones build --type sitl --drone protoflyer --msgs-output ~/eolab_ws/src/drones-ros2/px4_msgs"
+    # apptainer exec eolab.sif bash -c "source /opt/ros/humble/setup.bash && cd ~/eolab_ws/ && rosdep install -i --from-path src --rosdistro $ROS_DISTRO -y"
 }
 
 install_dependencies
