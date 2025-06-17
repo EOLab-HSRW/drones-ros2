@@ -7,6 +7,7 @@ From: osrf/ros:humble-desktop-full
         curl \
         wget \
         gpg \
+        python3-pip \
         software-properties-common
 
     # Install pip dependencies
