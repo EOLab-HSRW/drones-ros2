@@ -7,11 +7,33 @@ From: osrf/ros:humble-desktop-full
         curl \
         wget \
         gpg \
+        python3 \
         python3-pip \
         software-properties-common
 
+    python3 -m pip install pip==22.0.2
+
     # Install pip dependencies
     pip install vcstool git+https://github.com/EOLab-HSRW/drones-fw.git@main#egg=eolab_drones
+
+    # EOLab system setup
+    # build firmware
+    # Create a fake sudo command that just runs the actual command
+    cat << 'EOF' > /usr/bin/sudo
+#!/bin/sh
+ENV_VARS=""
+while echo "$1" | grep -q '='; do
+    ENV_VARS="$ENV_VARS $1"
+    shift
+done
+
+# Execute the actual command with env vars set
+
+eval $ENV_VARS exec "$@"
+EOF
+    chmod +x /usr/bin/sudo
+
+    eolab_drones build --type sitl --drone protoflyer --overwrite
 
     # Install ros dependencies
     # apt-get update && apt-get install -y \
@@ -22,7 +44,7 @@ From: osrf/ros:humble-desktop-full
 
 %environment
     export PATH="/usr/bin:$PATH"
-    export PS1="eolab drones> "
+    export PS1="[EOLab Drones] > "
 
 
 %runscript
