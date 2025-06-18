@@ -78,5 +78,5 @@ setup_workspace() {
     apptainer exec eolab.sif bash -c "source /opt/ros/humble/setup.bash && cd ~/eolab_ws/ && colcon build --symlink-install"
 }
 
-# install_dependencies
+install_dependencies
 setup_workspace
