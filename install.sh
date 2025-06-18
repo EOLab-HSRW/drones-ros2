@@ -72,11 +72,11 @@ setup_workspace() {
     mkdir -p ~/eolab_ws/src && cd ~/eolab_ws/src/
     git clone https://github.com/EOLab-HSRW/drones-ros2.git
     cd drones-ros2 && git pull origin main
-    apptainer build eolab.sif apptainer.def # later I'll change this with a pull operation from a container registry
+    # apptainer build eolab.sif apptainer.def # later I'll change this with a pull operation from a container registry
     apptainer exec eolab.sif bash -c "source /opt/ros/humble/setup.bash && cd ~/eolab_ws/src/drones-ros2/ && vcs import < .repos"
     apptainer exec eolab.sif bash -c "eolab_drones build --type sitl --drone protoflyer --msgs-output ~/eolab_ws/src/drones-ros2/px4_msgs"
-    apptainer exec eolab.sif bash -c "source /opt/ros/humble/setup.bash && cd ~/eolab_ws/src && colcon build --symlink-install"
+    apptainer exec eolab.sif bash -c "source /opt/ros/humble/setup.bash && cd ~/eolab_ws/ && colcon build --symlink-install"
 }
 
-install_dependencies
+# install_dependencies
 setup_workspace
