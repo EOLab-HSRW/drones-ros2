@@ -15,6 +15,30 @@ From: osrf/ros:humble-desktop-full
     # Install pip dependencies
     pip install vcstool git+https://github.com/EOLab-HSRW/drones-fw.git@main#egg=eolab_drones
 
+    # Setup QGroundControl
+    apt-get update && apt-get remove -y modemmanager
+
+    # Install GStreamer plugins
+    apt-get install -y \
+        gstreamer1.0-plugins-bad \
+        gstreamer1.0-libav \
+        gstreamer1.0-gl \
+        libfuse2 \
+        fuse-overlayfs \
+        libxcb-xinerama0 \
+        libxkbcommon-x11-0 \
+        libxcb-cursor-dev
+
+    # Download QGroundControl AppImage
+    wget -O /opt/QGroundControl.AppImage https://d176tv9ibo4jno.cloudfront.net/latest/QGroundControl-x86_64.AppImage
+    chmod +x /opt/QGroundControl.AppImage
+    mkdir -p /opt/QGC-extracted
+    cd /opt/QGC-extracted
+    /opt/QGroundControl.AppImage --appimage-extract
+
+    # Create symlink to the real executable inside the extracted folder
+    ln -s /opt/QGC-extracted/squashfs-root/AppRun /usr/local/bin/QGroundControl
+
     # EOLab system setup
     # build firmware
     # Create a fake sudo command that just runs the actual command
@@ -29,8 +53,6 @@ done
 eval $ENV_VARS exec "$@"
 EOF
     chmod +x /usr/bin/sudo
-
-    eolab_drones build --type sitl --drone protoflyer --overwrite
 
     # Clean up to reduce image size
     apt-get clean && rm -rf /var/lib/apt/lists/*
@@ -47,8 +69,8 @@ EOF
 
 %labels
     Harley Lara
-    Version 1.0
-    Description "EOLab development image with ROS2 humble and PX4 SITL"
+    Version 0.1
+    Description "EOLab development image with ROS2 humble, PX4 SITL and QGroundControl"
 
 %help
     This is the base container for EOLab drone systems.
