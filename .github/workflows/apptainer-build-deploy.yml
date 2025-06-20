@@ -37,14 +37,9 @@ jobs:
         run: |
           apptainer build eolab.sif eolab.def
 
-      - name: Login to ghcr.io
-        if: env.do_release
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Log in to registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-      - name: Deploy Container
+      - name: Push Image
         run: |
           apptainer push eolab.sif oras://ghcr.io/${GITHUB_REPOSITORY}:latest
