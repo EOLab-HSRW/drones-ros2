@@ -38,7 +38,7 @@ jobs:
           apptainer build eolab.sif eolab.def
 
       - name: Log in to registry
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | apptainer registry login -u ${{ github.actor }} --password-stdin oras://ghcr.io
 
       - name: Push Image
         run: |
