@@ -28,7 +28,7 @@ def launch_setup(context):
 
     start_px4 = ExecuteProcess(
         name=f"{drone_alias}-{instance}",
-        cmd=[f"{eolab_drones.get_stil_bin(drone_name)}", "-i", instance],
+        cmd=[f"eolab-sitl-{drone_name}", "-i", instance],
         output="both",
         additional_env={
             "PX4_GZ_STANDALONE": "1",

@@ -24,7 +24,7 @@ def launch_setup(context):
     # OR register plugin during build on PX4 side
     export_plugins = SetEnvironmentVariable(
         "GZ_SIM_SYSTEM_PLUGIN_PATH",
-        value=(environ.get("GZ_SIM_SYSTEM_PLUGIN_PATH", default="") + ":" + f"{eolab_drones.get_build_dir(LaunchConfiguration('drone').perform(context))}/src/modules/simulation/gz_plugins")
+        value=(environ.get("GZ_SIM_SYSTEM_PLUGIN_PATH", default="") + ":" + f"/opt/eolab-sitl-{LaunchConfiguration('drone').perform(context)}/gz_plugins")
     )
 
     export_server_config = SetEnvironmentVariable(
