@@ -17,8 +17,8 @@ find_package(visualization_msgs REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(OpenCV REQUIRED)
 
-add_executable(mini src/sub.cpp)
-ament_target_dependencies(mini rclcpp tf2 sensor_msgs visualization_msgs cv_bridge OpenCV)
+add_executable(detector src/detector.cpp)
+ament_target_dependencies(detector rclcpp tf2 sensor_msgs visualization_msgs cv_bridge OpenCV)
 
 install(TARGETS
   mini
