@@ -21,7 +21,7 @@ add_executable(detector src/detector.cpp)
 ament_target_dependencies(detector rclcpp tf2 sensor_msgs visualization_msgs cv_bridge OpenCV)
 
 install(TARGETS
-  mini
+  detector
   DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)
