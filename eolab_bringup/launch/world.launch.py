@@ -1,12 +1,61 @@
+import shutil
+import subprocess
 from os import environ, path
+
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, ExecuteProcess, GroupAction, IncludeLaunchDescription, OpaqueFunction, SetEnvironmentVariable, LogInfo
+from launch.actions import (
+    DeclareLaunchArgument,
+    ExecuteProcess,
+    GroupAction,
+    IncludeLaunchDescription,
+    OpaqueFunction,
+    SetEnvironmentVariable,
+    LogInfo,
+    Shutdown
+)
 from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, PythonExpression
+
 from launch_ros.substitutions import FindPackageShare
+
 import eolab_drones
 
+
 def launch_setup(context):
+
+    gz_bin = shutil.which("gz")
+    if gz_bin is None:
+        return [
+            Shutdown(reason="Missing Gazebo. `gz` command not found."),
+        ]
+
+    # `gz sim --versions` prints installed versions (one per line)
+    try:
+        res = subprocess.run(
+            ["gz", "sim", "--versions"],
+            capture_output=True,
+            text=True,
+        )
+    except Exception as e:
+        return [
+            Shutdown(reason=f"Cannot query Gazebo Sim version. Failed to execute `gz sim --versions`. {e}"),
+        ]
+
+    if res.returncode != 0:
+        return [
+            Shutdown(reason=f"Cannot query Gazebo Sim version. Failed to execute `gz sim --versions`.\n{res.stdout}.\n{res.stderr}."),
+        ]
+
+    versions = [ln.strip() for ln in res.stdout.splitlines() if ln.strip()]
+    has_major_8 = any(v == "8" or v.startswith("8.") for v in versions)
+
+    if not has_major_8:
+        return [
+            Shutdown(reason="Gazebo Sim 8 is required but not available.\n"
+                    f"Detected versions: {', '.join(versions) if versions else '(none)'}\n"
+                    "Hint: `gz sim --versions` should output something like 8.x.x"
+            ),
+        ]
 
 
     # TODO harley: this is just a quick fix to export

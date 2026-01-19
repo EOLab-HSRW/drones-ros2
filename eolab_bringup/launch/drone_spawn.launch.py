@@ -1,30 +1,38 @@
 import xacro
+
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, ExecuteProcess, OpaqueFunction
+from launch.actions import (
+    DeclareLaunchArgument,
+    ExecuteProcess,
+    OpaqueFunction,
+    GroupAction
+)
+from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
+
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
+
 import eolab_drones
 
 
 def launch_setup(context):
 
-    """
-    TODO:
-    - add mechanism to launch sim or physical
-    """
-
+    system = LaunchConfiguration("system").perform(context)
     world = LaunchConfiguration("world").perform(context)
     drone_name = LaunchConfiguration("drone").perform(context)
     drone_alias = LaunchConfiguration("alias").perform(context)
     instance = LaunchConfiguration("instance").perform(context)
     frame_id = str(eolab_drones.get_id(drone_name))
 
+    is_gz = "true" if system == "gz" else "false"
+
     robot_desc_content = xacro.process_file(
         PathJoinSubstitution(
             [FindPackageShare("eolab_description"), "drones", f"{drone_name}.urdf.xacro"]
         ).perform(context)
-    ).toxml().replace("\n", "") # IMPOTANT TO FLAT the string to remove newline characters
+    ).toxml().replace("\n", "") # NOTE (IMPOTANT): It needs to be flat string to remove newline characters.
+
 
     start_px4 = ExecuteProcess(
         name=f"{drone_alias}-{instance}",
@@ -78,16 +86,40 @@ def launch_setup(context):
         output='screen'
     )
 
+    spawn_in_gz = GroupAction(
+        actions=[
+            start_px4,
+            spawn_drone,
+            bridge_gz_topics,
+        ],
+        condition=IfCondition(is_gz)
+    )
+
+    robot_state_publiser_node = Node(
+        package="robot_state_publisher",
+        executable="robot_state_publisher",
+        output="both",
+        parameters=[
+            {"robot_description": robot_desc_content},
+            {"use_sim_time": True} # TODO (harley): check of system type
+        ]
+    )
+
     return [
-        start_px4,
-        spawn_drone,
-        bridge_gz_topics,
+        spawn_in_gz,
+        robot_state_publiser_node
     ]
 
 
 def generate_launch_description() -> LaunchDescription:
 
     ld = LaunchDescription()
+
+    ld.add_action(
+        DeclareLaunchArgument(
+            name="system",
+        )
+    )
 
     ld.add_action(DeclareLaunchArgument(
         name="world",
