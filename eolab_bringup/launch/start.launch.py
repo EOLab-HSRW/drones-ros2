@@ -10,8 +10,11 @@ from launch.actions import (
     IncludeLaunchDescription,
     OpaqueFunction,
     RegisterEventHandler,
+    LogInfo,
     GroupAction
 )
+
+from launch.event_handlers import OnExecutionComplete
 
 from launch.conditions import IfCondition
 from launch_testing.event_handlers import StdoutReadyListener
@@ -46,8 +49,15 @@ def launch_setup(context):
     drone = LaunchConfiguration("drone").perform(context)
     alias = LaunchConfiguration("alias").perform(context)
     instance = LaunchConfiguration("instance").perform(context)
+    world_name = LaunchConfiguration("world").perform(context)
 
-    is_gz = "true" if system == "gz" else "false"
+    start_gz_world = "true"
+    if system == "gz":
+        start_gz_world = "true"
+
+    if LaunchConfiguration("skip_world").perform(context) == "true":
+        start_gz_world = "false"
+
 
     print(f"""
  _____ ___  _          _
@@ -57,17 +67,28 @@ def launch_setup(context):
 |_____\___/|_____\__,_|_.__/  Instance: {instance}
 
 """)
-    if (is_gz):
+    if (start_gz_world):
         print("\tRunning in simulation mode.\n")
 
     start_gz_world = IncludeLaunchDescription(
         PathJoinSubstitution([FindPackageShare("eolab_bringup"), "launch", "world.launch.py"]),
         launch_arguments=[
+            ("world", world_name),
             ("drone", drone), # we need this here to resolve the SITL plugins for this drone
             ("verbose", LaunchConfiguration("verbose")),
             ("system", system)
-            ],
-        condition=IfCondition(is_gz)
+        ],
+        condition=IfCondition(start_gz_world)
+    )
+
+    wait_gz_ready = Node(
+        package="eolab_bringup",
+        executable="wait_gz_ready",
+        parameters=[{
+            "timeout_s": 20.0,
+            "world_name": world_name,
+        }],
+        output="screen",
     )
 
     # TODO: get the `robot_state_publisher` out of "drone_spawn.launch.py"
@@ -75,7 +96,7 @@ def launch_setup(context):
         PathJoinSubstitution([FindPackageShare("eolab_bringup"), "launch", "drone_spawn.launch.py"]),
         launch_arguments=[
             ("system", system),
-            ("world", LaunchConfiguration("world")),
+            ("world", world_name),
             ("drone", drone),
             ("alias", alias),
             ("instance", instance),
@@ -83,6 +104,16 @@ def launch_setup(context):
             ("y", LaunchConfiguration("y")),
             ("z", LaunchConfiguration("z")),
     ])
+
+    on_gz_ready = RegisterEventHandler(
+        OnExecutionComplete(
+            target_action = wait_gz_ready,
+            on_completion = [
+                LogInfo(msg="[CHEK] Gazebo World READY -> Spawn drone system"),
+                drone_spawn,
+            ]
+        )
+    )
 
     # TODO: build the agent cmd depending if sim or physical
     agent_cmd = ["MicroXRCEAgent", "udp4", "-p", "8888"]
@@ -106,8 +137,8 @@ def launch_setup(context):
     )
 
     start_pose = Node(
-        name="pose_node",
-        namespace=LaunchConfiguration("alias"),
+        name=f"pose_node_{alias}",
+        namespace=alias,
         package="eolab_utils",
         executable="pose",
         output="both"
@@ -115,7 +146,8 @@ def launch_setup(context):
 
     return [
         start_gz_world,
-        drone_spawn,
+        on_gz_ready,
+        wait_gz_ready,
         start_agent,
         start_rviz,
         start_pose,
@@ -196,6 +228,12 @@ def generate_launch_description() -> LaunchDescription:
     ))
 
     ld.add_action(DeclareLaunchArgument(
+        name="skip_world",
+        default_value="false",
+        description="Skip launch the world in simulation."
+    ))
+
+    ld.add_action(DeclareLaunchArgument(
         name="verbose",
         default_value="false",
         description="Verbose launch."
@@ -206,6 +244,7 @@ def generate_launch_description() -> LaunchDescription:
         default_value="true",
         description="Start RVIZ."
     ))
+
 
     ld.add_action(OpaqueFunction(function=launch_setup))
 

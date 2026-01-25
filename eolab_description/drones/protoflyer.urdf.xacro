@@ -1,16 +1,18 @@
 <robot name="protoflyer" xmlns:xacro="http://www.ros.org/wiki/xacro">
 
-  <xacro:property name="root_frame" value="base_link"/>
 
   <xacro:include filename="$(find eolab_description)/payloads/core_sensors.xacro"/>
   <xacro:include filename="$(find eolab_description)/payloads/rgb_generic.xacro"/>
 
   <xacro:include filename="$(find eolab_description)/propulsions/dji_e305.xacro"/>
 
+  <!-- <xacro:arg name="drone_name" default="protoflyer"/> -->
+  <!-- <xacro:property name="root_frame" value="$(arg drone_name)_base_link"/> -->
+  <xacro:property name="root_frame" value="base_link"/>
+
   <xacro:macro name="box_inertial" params="mass x y z xyz:='0 0 0' rpy:='0 0 0'">
     <inertial>
       <origin xyz="${xyz}" rpy="${rpy}"/>
-
       <mass value="${mass}"/>
       <inertia
         ixx="${(1/12.0)*mass*(y*y + z*z)}"
@@ -36,12 +38,9 @@
 
   <xacro:core_sensors link="${root_frame}"/>
 
-  <xacro:rgb_generic
-   name="rgb_camera"
-   parent_link="${root_frame}"
-   namespace=""
-   system="gz">
+  <xacro:rgb_generic name="rgb_camera" parent_link="${root_frame}" system="gz">
     <origin xyz="0 0 -0.05" rpy="0 ${radians(90)} 0"/>
+      <!-- rotation in roll to look downward -->
   </xacro:rgb_generic>
 
   <xacro:dji_e305 number="0" parent="${root_frame}" direction="ccw">

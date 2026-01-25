@@ -9,9 +9,8 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 find_package(ament_cmake REQUIRED)
-# uncomment the following section in order to fill in
-# further dependencies manually.
-# find_package(<dependency> REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(ros_gz_interfaces REQUIRED)
 
 execute_process(COMMAND ${Python_EXECUTABLE} -m pip install "git+https://github.com/EOLab-HSRW/drones-fw.git@main")
 
@@ -53,6 +52,13 @@ endif()
 #         -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}
 #         -DCMAKE_SUPPRESS_DEVELOPER_WARNINGS=1
 # )
+
+add_executable(wait_gz_ready ./src/wait_gz_ready.cpp)
+ament_target_dependencies(wait_gz_ready rclcpp ros_gz_interfaces)
+
+install(TARGETS
+  wait_gz_ready
+  DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY launch rviz
     DESTINATION share/${PROJECT_NAME})

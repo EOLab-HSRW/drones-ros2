@@ -19,7 +19,7 @@ import eolab_drones
 def launch_setup(context):
 
     system = LaunchConfiguration("system").perform(context)
-    world = LaunchConfiguration("world").perform(context)
+    world_name = LaunchConfiguration("world").perform(context)
     drone_name = LaunchConfiguration("drone").perform(context)
     drone_alias = LaunchConfiguration("alias").perform(context)
     instance = LaunchConfiguration("instance").perform(context)
@@ -30,7 +30,10 @@ def launch_setup(context):
     robot_desc_content = xacro.process_file(
         PathJoinSubstitution(
             [FindPackageShare("eolab_description"), "drones", f"{drone_name}.urdf.xacro"]
-        ).perform(context)
+        ).perform(context),
+        # mappings={
+        #     "drone_name": drone_alias,
+        # }
     ).toxml().replace("\n", "") # NOTE (IMPOTANT): It needs to be flat string to remove newline characters.
 
 
@@ -43,7 +46,7 @@ def launch_setup(context):
             "PX4_UXRCE_DDS_NS": f"{drone_alias}",
             "PX4_SYS_AUTOSTART": frame_id,
             "PX4_SIMULATOR": "gz",
-            "PX4_GZ_WORLD": LaunchConfiguration("world"),
+            "PX4_GZ_WORLD": world_name,
             "PX4_GZ_MODEL_NAME": f"{drone_alias}",
         }
     )
@@ -57,7 +60,7 @@ def launch_setup(context):
             "-x", LaunchConfiguration("x"),
             "-y", LaunchConfiguration("y"),
             "-z", LaunchConfiguration("z"),
-            # "-world", LaunchConfiguration("world") # TODO: check if required
+            "-world", world_name,
         ],
         output='both'
     )
@@ -66,9 +69,8 @@ def launch_setup(context):
         package='ros_gz_bridge',
         executable='parameter_bridge',
         arguments=[
-            '/clock@rosgraph_msgs/msg/Clock[ignition.msgs.Clock',
-            f'/world/{world}/model/{drone_alias}/link/base_link/sensor/rgb_camera_sensor/image@sensor_msgs/msg/Image[ignition.msgs.Image',
-            f'/world/{world}/model/{drone_alias}/link/base_link/sensor/rgb_camera_sensor/camera_info@sensor_msgs/msg/CameraInfo[ignition.msgs.CameraInfo',
+            f'/world/{world_name}/model/{drone_alias}/link/base_link/sensor/rgb_camera_sensor/image@sensor_msgs/msg/Image[gz.msgs.Image',
+            f'/world/{world_name}/model/{drone_alias}/link/base_link/sensor/rgb_camera_sensor/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
             # f'/{LaunchConfiguration("robot_name").perform(context)}/imu_sensor/imu@sensor_msgs/msg/Imu[gz.msgs.IMU',
             # f'/{LaunchConfiguration("robot_name").perform(context)}/lidar_sensor/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan',
         ],
@@ -76,8 +78,8 @@ def launch_setup(context):
         #     {"use_sim_time": LaunchConfiguration("use_sim_time")}
         # ],
         remappings=[
-            (f'/world/{world}/model/{drone_alias}/link/base_link/sensor/rgb_camera_sensor/image', f'/{drone_alias}/image'),
-            (f'/world/{world}/model/{drone_alias}/link/base_link/sensor/rgb_camera_sensor/camera_info', f'/{drone_alias}/camera_info')
+            (f'/world/{world_name}/model/{drone_alias}/link/base_link/sensor/rgb_camera_sensor/image', f'/{drone_alias}/rgb_camera_sensor/image_raw'),
+            (f'/world/{world_name}/model/{drone_alias}/link/base_link/sensor/rgb_camera_sensor/camera_info', f'/{drone_alias}/rgb_camera_sensor/camera_info')
         ],
         # NOTE (harley): the expansion of gz topic only works for 1 level higher
         # parameters=[
@@ -107,7 +109,7 @@ def launch_setup(context):
 
     return [
         spawn_in_gz,
-        robot_state_publiser_node
+        # robot_state_publiser_node
     ]
 
 

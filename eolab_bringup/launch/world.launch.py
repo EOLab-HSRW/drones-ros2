@@ -14,19 +14,43 @@ from launch.actions import (
     Shutdown
 )
 from launch.conditions import IfCondition
-from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, PythonExpression
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 
 from launch_ros.substitutions import FindPackageShare
+from launch_ros.actions import Node
 
 import eolab_drones
 
 
 def launch_setup(context):
+    """
+    Launch sequence:
+        1. Verify Gazebo installation. Check whether the `gz` command is 
+            available on the system. This indicates that Gazebo is installed.
+        2. Check the Gazebo version. PX4 SITL firmware v1.16.0 and newer 
+            requires Gazebo plugins that are ship with the firmware, 
+            but these plugins must be registered manually per drone basis.
+            Note: As of January 2026, the "PX4 SITL GZ Plugins" are available only for Gazebo Harmonic (Gazebo v8).
+        3. Set environment variables. Configure the following variables before launching Gazebo:
+            - `GZ_SIM_RESOURCE_PATH`: Path to simulation resources (models, drones, worlds, etc.)
+            - `GZ_SIM_SYSTEM_PLUGIN_PATH`: Path to the PX4 SITL GZ Plugins. Each SITL drone firmware is shipped with its own set of plugins.
+            - `GZ_SIM_SERVER_CONFIG_PATH`: Path to world plugins (required to bridge simulated sensors to PX4 SITL)
+        4. (Optional) Enable NVIDIA GPU support in WSL2. To use the NVIDIA GPU with Gazebo inside WSL2, set:
+            - `GALLIUM_DRIVER=d3d12`
+            - `MESA_D3D12_DEFAULT_ADAPTER_NAME=NVIDIA`
+        5. (Optional) Set the GPS location at runtime.
+        6. Launch Gazebo. Start Gazebo using `gz_sim.launch.py` from `ros_gz_sim`.
+        7. Start the Gazebo ↔ ROS bridge
+    """
+
+    world_name = LaunchConfiguration("world").perform(context)
+    drone_name = LaunchConfiguration("drone").perform(context)
+
 
     gz_bin = shutil.which("gz")
     if gz_bin is None:
         return [
-            Shutdown(reason="Missing Gazebo. `gz` command not found."),
+            Shutdown(reason="Missing Gazebo. `gz` command not found. This launch only supports Gazebo Harmonic."),
         ]
 
     # `gz sim --versions` prints installed versions (one per line)
@@ -73,12 +97,12 @@ def launch_setup(context):
     # OR register plugin during build on PX4 side
     export_plugins = SetEnvironmentVariable(
         "GZ_SIM_SYSTEM_PLUGIN_PATH",
-        value=(environ.get("GZ_SIM_SYSTEM_PLUGIN_PATH", default="") + ":" + f"/opt/eolab-sitl-{LaunchConfiguration('drone').perform(context)}/gz_plugins")
+        value=(environ.get("GZ_SIM_SYSTEM_PLUGIN_PATH", default="") + ":" + f"/opt/eolab-sitl-{drone_name}/gz_plugins")
     )
 
     export_server_config = SetEnvironmentVariable(
         "GZ_SIM_SERVER_CONFIG_PATH",
-        value=(environ.get("GZ_SIM_SERVER_CONFIG_PATH", default=PathJoinSubstitution([FindPackageShare("eolab_description"), "server.config"]).perform(context)))
+        value=(environ.get("GZ_SIM_SERVER_CONFIG_PATH", default=PathJoinSubstitution([FindPackageShare("eolab_description"), "gz-configs", "server.config"]).perform(context)))
     )
 
     gz_args = ["-r ", PathJoinSubstitution([FindPackageShare("eolab_description"), "worlds", f"{LaunchConfiguration('world').perform(context)}.sdf"])]
@@ -87,8 +111,8 @@ def launch_setup(context):
     else:
         gz_args.extend([" --gui-config ", PathJoinSubstitution([FindPackageShare("eolab_description"), "gz-configs", "minimal-gui.config"]).perform(context)])
 
-    is_wsl = "true" if path.exists("/proc/sys/fs/binfmt_misc/WSLInterop") else "false"
 
+    is_wsl = "true" if path.exists("/proc/sys/fs/binfmt_misc/WSLInterop") else "false"
     wsl_env = GroupAction(
         actions=[
             LogInfo(msg="It seems that you are in WSL"),
@@ -123,6 +147,35 @@ def launch_setup(context):
         }.items(),
     )
 
+    bridge_gz_topics = Node(
+        name="world_bridges",
+        package='ros_gz_bridge',
+        executable='parameter_bridge',
+        # Note (Harley): This parameter syntax is nice (verbose but useful),
+        # but is not supported in GZ Harmonic
+        # parameters=[
+        #   {"bridge_names": ["clock_bridge", "control_bridge"]},
+        #
+        #   {"bridges.clock_bridge.ros_topic_name": "/clock"},
+        #   {"bridges.clock_bridge.gz_topic_name": "/clock"},
+        #   {"bridges.clock_bridge.ros_type_name": "rosgraph_msgs/msg/Clock"},
+        #   {"bridges.clock_bridge.gz_type_name": "gz.msgs.Clock"},
+        #   {"bridges.clock_bridge.direction": "GZ_TO_ROS"},
+        #   {"bridges.clock_bridge.lazy": "False"},
+        #   {"bridges.clock_bridge.qos_profile": "CLOCK"},
+        #
+        #   {"bridges.control_bridge.service_name": f"/world/{world_name}/control"},
+        #   {"bridges.control_bridge.ros_type_name": "ros_gz_interfaces/srv/ControlWorld"},
+        #   {"bridges.control_bridge.gz_req_type_name": "gz.msgs.WorldControl"},
+        #   {"bridges.control_bridge.gz_rep_type_name": "gz.msgs.Boolean"},
+        # ],
+        arguments=[
+            "/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock",
+            f"/world/{world_name}/control@ros_gz_interfaces/srv/ControlWorld"
+        ],
+        output='screen'
+    )
+
     return [
         wsl_env,
         export_assets,
@@ -130,6 +183,7 @@ def launch_setup(context):
         export_server_config,
         set_gps_coord,
         gz,
+        bridge_gz_topics,
     ]
 
 
@@ -140,7 +194,7 @@ def generate_launch_description() -> LaunchDescription:
     ld.add_action(
         DeclareLaunchArgument(
             name="drone",
-            description="Name of the drone. (TEMPORAL USE) to load gz plugins"
+            description="Name of the drone. We use this to load gz plugins for this drone."
         )
     )
 
@@ -154,7 +208,7 @@ def generate_launch_description() -> LaunchDescription:
         DeclareLaunchArgument(
             name="world",
             default_value="empty",
-            description="World file in the `world` folder in eolab_description."
+            description="World file in the `world` folder in eolab_description (without .sdf extension)."
         )
     )
 
