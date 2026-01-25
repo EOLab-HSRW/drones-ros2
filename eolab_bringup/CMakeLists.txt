@@ -12,6 +12,9 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(ros_gz_interfaces REQUIRED)
 
+find_package(gz-transport13 REQUIRED)
+find_package(gz-msgs10 REQUIRED)
+
 execute_process(COMMAND ${Python_EXECUTABLE} -m pip install "git+https://github.com/EOLab-HSRW/drones-fw.git@main")
 
 include(ExternalProject)
@@ -56,8 +59,16 @@ endif()
 add_executable(wait_gz_ready ./src/wait_gz_ready.cpp)
 ament_target_dependencies(wait_gz_ready rclcpp ros_gz_interfaces)
 
+add_executable(wait_gz_entity src/wait_gz_entity.cpp)
+ament_target_dependencies(wait_gz_entity rclcpp)
+target_link_libraries(wait_gz_entity
+  gz-transport13::core
+  gz-msgs10::core
+)
+
 install(TARGETS
   wait_gz_ready
+  wait_gz_entity
   DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY launch rviz

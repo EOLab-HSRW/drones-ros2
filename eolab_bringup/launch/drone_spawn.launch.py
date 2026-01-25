@@ -5,10 +5,12 @@ from launch.actions import (
     DeclareLaunchArgument,
     ExecuteProcess,
     OpaqueFunction,
+    RegisterEventHandler,
     GroupAction
 )
 from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
+from launch.event_handlers import OnExecutionComplete
 
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
@@ -88,11 +90,44 @@ def launch_setup(context):
         output='screen'
     )
 
+    set_follow_entity = ExecuteProcess(
+        name="follow_entity",
+        cmd=[
+            "gz", "service", "-s", "/gui/follow",
+            "--reqtype", "gz.msgs.StringMsg",
+            "--reptype", "gz.msgs.Boolean",
+            "--timeout", "8000",
+            "--req", f'data: "{drone_name}"',
+        ]
+    )
+
+    wait_gz_entity = Node(
+        package="eolab_bringup",
+        executable="wait_gz_entity",
+        output="both",
+        parameters=[
+            {"entity_name": drone_name},
+            {"world_name": world_name},
+            {"timeout_s": 30.0}
+        ]
+    )
+
+    on_gz_entity_ready = RegisterEventHandler(
+        OnExecutionComplete(
+            target_action = wait_gz_entity,
+            on_completion = [
+                set_follow_entity,
+            ]
+        )
+    )
+
     spawn_in_gz = GroupAction(
         actions=[
             start_px4,
             spawn_drone,
             bridge_gz_topics,
+            on_gz_entity_ready,
+            wait_gz_entity,
         ],
         condition=IfCondition(is_gz)
     )
