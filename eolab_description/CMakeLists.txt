@@ -14,7 +14,6 @@ find_package(ament_cmake REQUIRED)
 install(DIRECTORY
     drones
     payloads
-    launch
     worlds
     propulsions
     assets
