@@ -2,35 +2,41 @@ import shlex
 import shutil
 import subprocess
 from pathlib import Path
-from typing import List, Optional, Tuple
 
-from ament_index_python.packages import (
-    PackageNotFoundError,
-    get_package_share_path,
-)
 from launch import LaunchContext, LaunchDescription
 from launch.actions import (
     AppendEnvironmentVariable,
     DeclareLaunchArgument,
+    EmitEvent,
     ExecuteProcess,
     IncludeLaunchDescription,
     LogInfo,
     OpaqueFunction,
     RegisterEventHandler,
     SetEnvironmentVariable,
-    Shutdown,
 )
 from launch.event_handlers import OnProcessExit
+from launch.events import Shutdown
 from launch.events.process import ProcessExited
-from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import LaunchConfiguration
 
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
-from launch_ros.substitutions import FindPackageShare
+
+from eolab_bringup.commons import (
+    BOOLEAN_CHOICES,
+    DEFAULT_WORLD,
+    DESCRIPTION_PACKAGE,
+    SIM_BRINGUP_PACKAGE,
+    get_launch_file,
+    get_package_file,
+    get_package_share,
+    get_worlds,
+)
 
 
-DESCRIPTION_PACKAGE = "eolab_description"
-SIM_BRINGUP_PACKAGE = "eolab_bringup_sim"
+ROS_GZ_SIM_PACKAGE = "ros_gz_sim"
 
 REQUIRED_GZ_SIM_MAJOR = 8
 DEFAULT_GZ_READY_TIMEOUT_S = "20.0"
@@ -38,7 +44,7 @@ DEFAULT_GZ_READY_TIMEOUT_S = "20.0"
 
 def _query_gazebo_versions(
     gz_executable: str,
-) -> Tuple[Optional[List[str]], Optional[str]]:
+) -> tuple[list[str] | None, str | None]:
     """Return installed Gazebo Sim versions or an error message."""
     try:
         result = subprocess.run(
@@ -80,10 +86,16 @@ def _query_gazebo_versions(
 
 
 def launch_setup(context: LaunchContext):
+    """Validate and launch one Gazebo world."""
     world_name = LaunchConfiguration("world").perform(context)
     drone_name = LaunchConfiguration("drone").perform(context)
+
     verbose = (
-        LaunchConfiguration("verbose").perform(context) == "true"
+        LaunchConfiguration("verbose")
+        .perform(context)
+        .strip()
+        .lower()
+        == "true"
     )
 
     latitude = LaunchConfiguration("lat").perform(context)
@@ -91,6 +103,7 @@ def launch_setup(context: LaunchContext):
     altitude = LaunchConfiguration("alt").perform(context)
 
     alias = LaunchConfiguration("alias")
+    gz_ready_timeout = LaunchConfiguration("gz_ready_timeout_s")
 
     # ------------------------------------------------------------------
     # Gazebo installation and version checks
@@ -100,10 +113,12 @@ def launch_setup(context: LaunchContext):
 
     if gz_executable is None:
         return [
-            Shutdown(
-                reason=(
-                    "Gazebo is not available: the 'gz' executable was "
-                    "not found in PATH. Gazebo Sim 8 is required."
+            EmitEvent(
+                event=Shutdown(
+                    reason=(
+                        "Gazebo is not available: the 'gz' executable was "
+                        "not found in PATH. Gazebo Sim 8 is required."
+                    )
                 )
             )
         ]
@@ -112,10 +127,21 @@ def launch_setup(context: LaunchContext):
 
     if version_error is not None:
         return [
-            Shutdown(reason=version_error)
+            EmitEvent(
+                event=Shutdown(reason=version_error)
+            )
         ]
 
-    assert versions is not None
+    if versions is None:
+        return [
+            EmitEvent(
+                event=Shutdown(
+                    reason=(
+                        "Gazebo version detection returned no result."
+                    )
+                )
+            )
+        ]
 
     has_required_version = any(
         version == str(REQUIRED_GZ_SIM_MAJOR)
@@ -131,70 +157,56 @@ def launch_setup(context: LaunchContext):
         )
 
         return [
-            Shutdown(
-                reason=(
-                    f"Gazebo Sim {REQUIRED_GZ_SIM_MAJOR} is required. "
-                    f"Detected versions: {detected_versions}."
+            EmitEvent(
+                event=Shutdown(
+                    reason=(
+                        f"Gazebo Sim {REQUIRED_GZ_SIM_MAJOR} is required. "
+                        f"Detected versions: {detected_versions}."
+                    )
                 )
             )
         ]
 
     # ------------------------------------------------------------------
-    # Resolve and validate package resources
+    # Resolve and validate installed package resources
     # ------------------------------------------------------------------
 
     try:
-        description_share = get_package_share_path(
+        description_share = get_package_share(
             DESCRIPTION_PACKAGE
         )
-    except PackageNotFoundError:
+
+        world_file = get_package_file(
+            DESCRIPTION_PACKAGE,
+            "worlds",
+            f"{world_name}.sdf",
+        )
+
+        gui_config = get_package_file(
+            DESCRIPTION_PACKAGE,
+            "gz-configs",
+            (
+                "debug-gui.config"
+                if verbose
+                else "minimal-gui.config"
+            ),
+        )
+
+        ros_gz_sim_launch_file = get_launch_file(
+            ROS_GZ_SIM_PACKAGE,
+            "gz_sim.launch.py",
+        )
+    except RuntimeError as exc:
         return [
-            Shutdown(
-                reason=(
-                    f"Required package '{DESCRIPTION_PACKAGE}' "
-                    "was not found."
-                )
+            EmitEvent(
+                event=Shutdown(reason=str(exc))
             )
         ]
-
-    # World names are expected to be simple filenames, not paths.
-    if Path(world_name).name != world_name:
-        return [
-            Shutdown(
-                reason=f"Invalid world name '{world_name}'."
-            )
-        ]
-
-    world_file = (
-        description_share
-        / "worlds"
-        / f"{world_name}.sdf"
-    )
-
-    if not world_file.is_file():
-        return [
-            Shutdown(
-                reason=(
-                    "Gazebo world file was not found: "
-                    f"'{world_file}'."
-                )
-            )
-        ]
-
-    gz_config_dir = description_share / "gz-configs"
 
     default_server_config = (
-        gz_config_dir
+        description_share
+        / "gz-configs"
         / "server.config"
-    )
-
-    gui_config = (
-        gz_config_dir
-        / (
-            "debug-gui.config"
-            if verbose
-            else "minimal-gui.config"
-        )
     )
 
     server_config_is_overridden = bool(
@@ -208,20 +220,12 @@ def launch_setup(context: LaunchContext):
         and not default_server_config.is_file()
     ):
         return [
-            Shutdown(
-                reason=(
-                    "Default Gazebo server configuration was not found: "
-                    f"'{default_server_config}'."
-                )
-            )
-        ]
-
-    if not gui_config.is_file():
-        return [
-            Shutdown(
-                reason=(
-                    "Gazebo GUI configuration was not found: "
-                    f"'{gui_config}'."
+            EmitEvent(
+                event=Shutdown(
+                    reason=(
+                        "Default Gazebo server configuration was not "
+                        f"found at '{default_server_config}'."
+                    )
                 )
             )
         ]
@@ -232,10 +236,12 @@ def launch_setup(context: LaunchContext):
 
     if not sitl_plugin_dir.is_dir():
         return [
-            Shutdown(
-                reason=(
-                    "PX4 SITL Gazebo plugin directory was not found: "
-                    f"'{sitl_plugin_dir}'."
+            EmitEvent(
+                event=Shutdown(
+                    reason=(
+                        "PX4 SITL Gazebo plugin directory was not found "
+                        f"at '{sitl_plugin_dir}'."
+                    )
                 )
             )
         ]
@@ -245,9 +251,9 @@ def launch_setup(context: LaunchContext):
     # ------------------------------------------------------------------
 
     environment_actions = [
-        # Preserve the original parent-of-share behavior.
-        # This supports resource URIs containing the package directory
-        # name, for example model://eolab_description/...
+        # Use the parent of the package share so resource URIs containing
+        # the package directory remain resolvable, for example:
+        # model://eolab_description/...
         AppendEnvironmentVariable(
             "GZ_SIM_RESOURCE_PATH",
             str(description_share.parent),
@@ -259,7 +265,7 @@ def launch_setup(context: LaunchContext):
         ),
     ]
 
-    # Respect a value provided by the calling environment.
+    # Preserve an explicit value inherited from the calling environment.
     if not server_config_is_overridden:
         environment_actions.append(
             SetEnvironmentVariable(
@@ -274,9 +280,7 @@ def launch_setup(context: LaunchContext):
 
     wsl_actions = []
 
-    if Path(
-        "/proc/sys/fs/binfmt_misc/WSLInterop"
-    ).exists():
+    if Path("/proc/sys/fs/binfmt_misc/WSLInterop").exists():
         wsl_actions.append(
             LogInfo(
                 msg=(
@@ -286,7 +290,7 @@ def launch_setup(context: LaunchContext):
             )
         )
 
-        # Do not overwrite explicit user settings.
+        # Preserve explicitly configured user values.
         if not context.environment.get("GALLIUM_DRIVER"):
             wsl_actions.append(
                 SetEnvironmentVariable(
@@ -328,15 +332,13 @@ def launch_setup(context: LaunchContext):
     )
 
     start_gz_server = IncludeLaunchDescription(
-        PathJoinSubstitution([
-            FindPackageShare("ros_gz_sim"),
-            "launch",
-            "gz_sim.launch.py",
-        ]),
+        PythonLaunchDescriptionSource(
+            str(ros_gz_sim_launch_file)
+        ),
         launch_arguments={
             "gz_args": gz_args_server,
             "gz_version": str(REQUIRED_GZ_SIM_MAJOR),
-            "on_exit_shutdown": "True",
+            "on_exit_shutdown": "true",
         }.items(),
     )
 
@@ -344,21 +346,19 @@ def launch_setup(context: LaunchContext):
     # Gazebo GUI
     # ------------------------------------------------------------------
 
-    gz_args_client = [
-        gz_executable,
-        "sim",
-        "-g",
-        "--force-version",
-        str(REQUIRED_GZ_SIM_MAJOR),
-        "-v",
-        "4" if verbose else "1",
-        "--gui-config",
-        str(gui_config),
-    ]
-
     start_gz_gui = ExecuteProcess(
         name="gz_gui",
-        cmd=gz_args_client,
+        cmd=[
+            gz_executable,
+            "sim",
+            "-g",
+            "--force-version",
+            str(REQUIRED_GZ_SIM_MAJOR),
+            "-v",
+            "4" if verbose else "1",
+            "--gui-config",
+            str(gui_config),
+        ],
         output="both",
     )
 
@@ -391,9 +391,7 @@ def launch_setup(context: LaunchContext):
         name="wait_gz_ready",
         parameters=[{
             "timeout_s": ParameterValue(
-                LaunchConfiguration(
-                    "gz_ready_timeout_s"
-                ),
+                gz_ready_timeout,
                 value_type=float,
             ),
             "world_name": world_name,
@@ -440,6 +438,7 @@ def launch_setup(context: LaunchContext):
         event: ProcessExited,
         _context: LaunchContext,
     ):
+        """Start the post-readiness actions or terminate the launch."""
         if event.returncode == 0:
             return [
                 LogInfo(
@@ -459,10 +458,12 @@ def launch_setup(context: LaunchContext):
                     f"with exit code {event.returncode}."
                 )
             ),
-            Shutdown(
-                reason=(
-                    "Gazebo world did not become ready; the GUI and "
-                    "drone system will not be started."
+            EmitEvent(
+                event=Shutdown(
+                    reason=(
+                        "Gazebo world did not become ready; the GUI and "
+                        "drone system will not be started."
+                    )
                 )
             ),
         ]
@@ -475,11 +476,11 @@ def launch_setup(context: LaunchContext):
     )
 
     return [
-        # These actions must run before any Gazebo process starts.
+        # Environment changes must execute before Gazebo starts.
         *wsl_actions,
         *environment_actions,
 
-        # Register the event handler before its observed process.
+        # Register the handler before starting the observed process.
         on_gz_ready,
 
         start_gz_server,
@@ -491,56 +492,65 @@ def launch_setup(context: LaunchContext):
 def generate_launch_description() -> LaunchDescription:
     return LaunchDescription([
         DeclareLaunchArgument(
-            "drone",
+            name="drone",
             description=(
                 "Drone model used to select the PX4 SITL "
                 "Gazebo plugins."
             ),
         ),
+
         DeclareLaunchArgument(
-            "alias",
+            name="alias",
             default_value=LaunchConfiguration("drone"),
             description=(
                 "ROS namespace used for simulation processes."
             ),
         ),
+
         DeclareLaunchArgument(
-            "world",
-            default_value="empty",
+            name="world",
+            default_value=DEFAULT_WORLD,
+            choices=get_worlds(),
             description=(
                 "World filename from eolab_description/worlds, "
-                "without the .sdf extension."
+                "without the '.sdf' extension."
             ),
         ),
+
         DeclareLaunchArgument(
-            "lat",
+            name="lat",
             default_value="51.497741558866004",
             description="WGS84 latitude.",
         ),
+
         DeclareLaunchArgument(
-            "lon",
+            name="lon",
             default_value="6.549182534441797",
             description="WGS84 longitude.",
         ),
+
         DeclareLaunchArgument(
-            "alt",
+            name="alt",
             default_value="26.54",
             description="WGS84 elevation in metres.",
         ),
+
         DeclareLaunchArgument(
-            "verbose",
+            name="verbose",
             default_value="false",
-            choices=["true", "false"],
+            choices=BOOLEAN_CHOICES,
             description=(
                 "Enable verbose Gazebo server and GUI output."
             ),
         ),
+
         DeclareLaunchArgument(
-            "gz_ready_timeout_s",
+            name="gz_ready_timeout_s",
             default_value=DEFAULT_GZ_READY_TIMEOUT_S,
             description=(
                 "Gazebo world readiness timeout in seconds."
             ),
         ),
+
         OpaqueFunction(function=launch_setup),
     ])

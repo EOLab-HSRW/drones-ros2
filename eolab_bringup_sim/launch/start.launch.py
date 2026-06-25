@@ -10,15 +10,21 @@ from launch.conditions import IfCondition, UnlessCondition
 from launch.event_handlers import OnProcessExit
 from launch.events import Shutdown
 from launch.events.process import ProcessExited
-from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import LaunchConfiguration
 
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
-from launch_ros.substitutions import FindPackageShare
 
+from eolab_bringup.commons import (
+    BOOLEAN_CHOICES,
+    COMMON_BRINGUP_PACKAGE,
+    SIM_BRINGUP_PACKAGE,
+    get_launch_file,
+    get_package_file,
+    get_worlds,
+)
 
-SIM_BRINGUP_PACKAGE = "eolab_bringup_sim"
-COMMON_BRINGUP_PACKAGE = "eolab_bringup"
 
 DEFAULT_GZ_READY_TIMEOUT_S = "20.0"
 
@@ -28,43 +34,62 @@ def generate_launch_description() -> LaunchDescription:
     alias = LaunchConfiguration("alias")
     instance = LaunchConfiguration("instance")
 
+    position_x = LaunchConfiguration("x")
+    position_y = LaunchConfiguration("y")
+    position_z = LaunchConfiguration("z")
+
+    latitude = LaunchConfiguration("lat")
+    longitude = LaunchConfiguration("lon")
+    altitude = LaunchConfiguration("alt")
+
     world = LaunchConfiguration("world")
     skip_world = LaunchConfiguration("skip_world")
+    camera_follow = LaunchConfiguration("camera_follow")
     verbose = LaunchConfiguration("verbose")
     rviz = LaunchConfiguration("rviz")
 
-    start_gz_world = IncludeLaunchDescription(
-        PathJoinSubstitution([
-            FindPackageShare("eolab_bringup_sim"),
-            "launch",
-            "world.launch.py",
-            ]),
-        launch_arguments={
-            "world": LaunchConfiguration("world"),
-            "drone": LaunchConfiguration("drone"),
-            "alias": LaunchConfiguration("alias"),
+    gz_ready_timeout = LaunchConfiguration("gz_ready_timeout_s")
 
-            "lat": LaunchConfiguration("lat"),
-            "lon": LaunchConfiguration("lon"),
-            "alt": LaunchConfiguration("alt"),
-            "verbose": LaunchConfiguration("verbose"),
-            }.items(),
-        condition=UnlessCondition(
-            LaunchConfiguration("skip_world")
-            ),
+    world_launch_file = get_launch_file(
+        SIM_BRINGUP_PACKAGE,
+        "world.launch.py",
     )
 
+    drone_spawn_launch_file = get_launch_file(
+        SIM_BRINGUP_PACKAGE,
+        "drone_spawn.launch.py",
+    )
+
+    rviz_config = get_package_file(
+        COMMON_BRINGUP_PACKAGE,
+        "rviz",
+        "default.rviz",
+    )
+
+    start_gz_world = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(str(world_launch_file)),
+        launch_arguments={
+            "world": world,
+            "drone": drone,
+            "alias": alias,
+            "lat": latitude,
+            "lon": longitude,
+            "alt": altitude,
+            "verbose": verbose,
+        }.items(),
+        condition=UnlessCondition(skip_world),
+    )
 
     # Contract:
-    #   exit code 0     -> Gazebo server and GUI are ready
-    #   nonzero code    -> timeout or readiness failure
+    #   exit code 0  -> Gazebo server and GUI are ready
+    #   nonzero      -> timeout or readiness failure
     wait_gz_full_ready = Node(
         package=SIM_BRINGUP_PACKAGE,
         executable="wait_gz_gui_ready",
         name="wait_gz_gui_ready",
         parameters=[{
             "timeout_s": ParameterValue(
-                LaunchConfiguration("gz_ready_timeout_s"),
+                gz_ready_timeout,
                 value_type=float,
             ),
         }],
@@ -72,21 +97,17 @@ def generate_launch_description() -> LaunchDescription:
     )
 
     drone_spawn = IncludeLaunchDescription(
-        PathJoinSubstitution([
-            FindPackageShare("eolab_bringup_sim"),
-            "launch",
-            "drone_spawn.launch.py",
-        ]),
+        PythonLaunchDescriptionSource(str(drone_spawn_launch_file)),
         launch_arguments={
-            "world": LaunchConfiguration("world"),
-            "drone": LaunchConfiguration("drone"),
-            "alias": LaunchConfiguration("alias"),
-            "instance": LaunchConfiguration("instance"),
-            "x": LaunchConfiguration("x"),
-            "y": LaunchConfiguration("y"),
-            "z": LaunchConfiguration("z"),
-            "verbose": LaunchConfiguration("verbose"),
-            "camera_follow": LaunchConfiguration("camera_follow"),
+            "world": world,
+            "drone": drone,
+            "alias": alias,
+            "instance": instance,
+            "x": position_x,
+            "y": position_y,
+            "z": position_z,
+            "verbose": verbose,
+            "camera_follow": camera_follow,
         }.items(),
     )
 
@@ -97,11 +118,7 @@ def generate_launch_description() -> LaunchDescription:
         condition=IfCondition(rviz),
         arguments=[
             "-d",
-            PathJoinSubstitution([
-                FindPackageShare(COMMON_BRINGUP_PACKAGE),
-                "rviz",
-                "default.rviz",
-            ]),
+            str(rviz_config),
             "-t",
             "EOLab System - RViz2",
         ],
@@ -112,6 +129,7 @@ def generate_launch_description() -> LaunchDescription:
         event: ProcessExited,
         _context: LaunchContext,
     ):
+        """Spawn the drone only after Gazebo becomes ready."""
         if event.returncode == 0:
             return [
                 LogInfo(
@@ -124,7 +142,8 @@ def generate_launch_description() -> LaunchDescription:
             LogInfo(
                 msg=(
                     "[ERROR] Gazebo readiness check failed with exit "
-                    f"code {event.returncode}; the drone will not be spawned."
+                    f"code {event.returncode}; the drone will not be "
+                    "spawned."
                 )
             ),
             EmitEvent(
@@ -145,79 +164,90 @@ def generate_launch_description() -> LaunchDescription:
 
     return LaunchDescription([
         DeclareLaunchArgument(
-            "drone",
+            name="drone",
             description="Drone model to start in simulation.",
         ),
+
         DeclareLaunchArgument(
-            "alias",
+            name="alias",
             description="Runtime alias and ROS namespace for the drone.",
         ),
+
         DeclareLaunchArgument(
-            "instance",
+            name="instance",
             description="Simulation instance number.",
         ),
+
         DeclareLaunchArgument(
-            "x",
+            name="x",
             description="Drone spawn X position.",
         ),
+
         DeclareLaunchArgument(
-            "y",
+            name="y",
             description="Drone spawn Y position.",
         ),
+
         DeclareLaunchArgument(
-            "z",
+            name="z",
             description="Drone spawn Z position.",
         ),
 
-        # Preserved for compatibility with the current parent interface.
-        # They are not consumed by this launch file yet.
         DeclareLaunchArgument(
-            "lon",
+            name="lon",
             description="WGS84 longitude.",
         ),
+
         DeclareLaunchArgument(
-            "lat",
+            name="lat",
             description="WGS84 latitude.",
         ),
+
         DeclareLaunchArgument(
-            "alt",
+            name="alt",
             description="WGS84 altitude.",
         ),
 
         DeclareLaunchArgument(
-            "verbose",
-            choices=["true", "false"],
+            name="verbose",
+            choices=BOOLEAN_CHOICES,
             description="Enable verbose simulation output.",
         ),
+
         DeclareLaunchArgument(
-            "world",
+            name="world",
+            choices=get_worlds(),
             description="Gazebo world name without the file extension.",
         ),
+
         DeclareLaunchArgument(
-            "skip_world",
+            name="skip_world",
             default_value="false",
-            choices=["true", "false"],
+            choices=BOOLEAN_CHOICES,
             description=(
                 "Do not start Gazebo from this launch file. The readiness "
                 "checker will still wait for an externally started Gazebo."
             ),
         ),
+
         DeclareLaunchArgument(
-            "camera_follow",
+            name="camera_follow",
             default_value="true",
-            choices=["true", "false"],
+            choices=BOOLEAN_CHOICES,
             description=(
                 "Make the Gazebo GUI camera follow the spawned drone."
             ),
         ),
+
         DeclareLaunchArgument(
-            "rviz",
+            name="rviz",
             default_value="true",
-            choices=["true", "false"],
+            choices=BOOLEAN_CHOICES,
             description="Start RViz.",
         ),
+
         DeclareLaunchArgument(
-            "gz_ready_timeout_s",
+            name="gz_ready_timeout_s",
             default_value=DEFAULT_GZ_READY_TIMEOUT_S,
             description="Gazebo readiness timeout in seconds.",
         ),
@@ -225,13 +255,13 @@ def generate_launch_description() -> LaunchDescription:
         # Register the handler before starting the process it observes.
         on_gz_full_ready,
 
-        # Start Gazebo first unless an external instance is requested.
+        # Start Gazebo unless an external instance is requested.
         start_gz_world,
 
         # Poll until Gazebo is ready or the timeout expires.
         wait_gz_full_ready,
 
-        # RViz is independent from Gazebo readiness. It is stopped
+        # RViz is independent from Gazebo readiness. It is terminated
         # automatically if launch shuts down after a readiness failure.
         start_rviz,
     ])
