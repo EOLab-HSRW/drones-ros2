@@ -9,16 +9,10 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 find_package(ament_cmake REQUIRED)
-find_package(rclcpp REQUIRED)
-find_package(ros_gz_interfaces REQUIRED)
-
-find_package(gz-transport13 REQUIRED)
-find_package(gz-msgs10 REQUIRED)
-
-execute_process(COMMAND ${Python_EXECUTABLE} -m pip install "git+https://github.com/EOLab-HSRW/drones-fw.git@main")
 
 include(ExternalProject)
-include(FetchContent)
+
+execute_process(COMMAND ${Python_EXECUTABLE} -m pip install "git+https://github.com/EOLab-HSRW/drones-fw.git@main")
 
 find_program(MICRO_XRCE_AGENT_EXECUTABLE MicroXRCEAgent)
 
@@ -42,6 +36,9 @@ else()
     message(STATUS "MicroXRCEAgent is already installed: ${MICRO_XRCE_AGENT_EXECUTABLE}")
 endif()
 
+install(DIRECTORY launch rviz
+    DESTINATION share/${PROJECT_NAME})
+
 # set(PX4_MSGS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../px4_msgs)
 #
 # ExternalProject_Add(
@@ -55,24 +52,6 @@ endif()
 #         -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}
 #         -DCMAKE_SUPPRESS_DEVELOPER_WARNINGS=1
 # )
-
-add_executable(wait_gz_ready ./src/wait_gz_ready.cpp)
-ament_target_dependencies(wait_gz_ready rclcpp ros_gz_interfaces)
-
-add_executable(wait_gz_entity src/wait_gz_entity.cpp)
-ament_target_dependencies(wait_gz_entity rclcpp)
-target_link_libraries(wait_gz_entity
-  gz-transport13::core
-  gz-msgs10::core
-)
-
-install(TARGETS
-  wait_gz_ready
-  wait_gz_entity
-  DESTINATION lib/${PROJECT_NAME})
-
-install(DIRECTORY launch rviz
-    DESTINATION share/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

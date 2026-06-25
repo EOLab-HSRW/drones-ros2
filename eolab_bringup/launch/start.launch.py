@@ -1,251 +1,248 @@
-import eolab_drones
-
 from pathlib import Path
+from typing import List
 
-from launch import LaunchDescription
-from launch.action import LaunchContext
+import eolab_drones
+from ament_index_python.packages import (
+    PackageNotFoundError,
+    get_package_share_directory,
+)
+from launch import LaunchContext, LaunchDescription
 from launch.actions import (
     DeclareLaunchArgument,
-    ExecuteProcess,
     IncludeLaunchDescription,
     OpaqueFunction,
-    RegisterEventHandler,
-    LogInfo,
-    GroupAction
+    LogInfo
+    # RaiseError, # No available in Humble
 )
-
-from launch.event_handlers import OnExecutionComplete
-
-from launch.conditions import IfCondition
-from launch_testing.event_handlers import StdoutReadyListener
-from launch.substitutions import (
-    LaunchConfiguration,
-    PathJoinSubstitution,
-    EnvironmentVariable
-)
-
-from launch_ros.substitutions import FindPackageShare
-from launch_ros.actions import Node
-
-def get_worlds():
-    """
-    Check the worlds directory under eolab_description/worlds
-    and dynamically get the available world choices.
-    """
-    context = LaunchContext()
-
-    worlds_dir = Path(
-        PathJoinSubstitution([
-            FindPackageShare("eolab_description"), "worlds"
-        ]).perform(context)
-    )
-
-    return [world.stem for world in worlds_dir.glob("*.sdf")]
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import EnvironmentVariable, LaunchConfiguration
 
 
-def launch_setup(context):
+SYSTEM_GZ = "gz"
+SYSTEM_HW = "hw"
+DEFAULT_WORLD = "empty"
 
-    system = LaunchConfiguration("system").perform(context)
-    drone = LaunchConfiguration("drone").perform(context)
-    alias = LaunchConfiguration("alias").perform(context)
-    instance = LaunchConfiguration("instance").perform(context)
-    world_name = LaunchConfiguration("world").perform(context)
-
-    start_gz_world = "true"
-    if system == "gz":
-        start_gz_world = "true"
-
-    if LaunchConfiguration("skip_world").perform(context) == "true":
-        start_gz_world = "false"
+DESCRIPTION_PACKAGE = "eolab_description"
+COMMON_BRINGUP_PACKAGE = "eolab_bringup"
+SIM_BRINGUP_PACKAGE = "eolab_bringup_sim"
+HW_BRINGUP_PACKAGE = "eolab_bringup_hw"
 
 
-    print(f"""
- _____ ___  _          _
-| ____/ _ \| |    __ _| |__   System:   {system}
-|  _|| | | | |   / _` | '_ \  Drone:    {drone}
-| |__| |_| | |__| (_| | |_) | Alias:    {alias}
-|_____\___/|_____\__,_|_.__/  Instance: {instance}
+def _get_package_share(package_name: str) -> Path:
+    """Return a package share directory with a useful error message."""
+    try:
+        return Path(get_package_share_directory(package_name))
+    except PackageNotFoundError as exc:
+        raise RuntimeError(
+            f"Required ROS 2 package '{package_name}' was not found. "
+            "Build/install it and source the workspace before launching."
+        ) from exc
 
-""")
-    if (start_gz_world):
-        print("\tRunning in simulation mode.\n")
 
-    start_gz_world = IncludeLaunchDescription(
-        PathJoinSubstitution([FindPackageShare("eolab_bringup"), "launch", "world.launch.py"]),
-        launch_arguments=[
-            ("world", world_name),
-            ("drone", drone), # we need this here to resolve the SITL plugins for this drone
-            ("verbose", LaunchConfiguration("verbose")),
-            ("system", system)
-        ],
-        condition=IfCondition(start_gz_world)
-    )
+def _get_launch_file(package_name: str, filename: str) -> Path:
+    """Resolve and validate a Python launch file from a package."""
+    launch_file = _get_package_share(package_name) / "launch" / filename
 
-    wait_gz_ready = Node(
-        package="eolab_bringup",
-        executable="wait_gz_ready",
-        parameters=[{
-            "timeout_s": 20.0,
-            "world_name": world_name,
-        }],
-        output="screen",
-    )
-
-    # TODO: get the `robot_state_publisher` out of "drone_spawn.launch.py"
-    drone_spawn = IncludeLaunchDescription( 
-        PathJoinSubstitution([FindPackageShare("eolab_bringup"), "launch", "drone_spawn.launch.py"]),
-        launch_arguments=[
-            ("system", system),
-            ("world", world_name),
-            ("drone", drone),
-            ("alias", alias),
-            ("instance", instance),
-            ("x", LaunchConfiguration("x")),
-            ("y", LaunchConfiguration("y")),
-            ("z", LaunchConfiguration("z")),
-    ])
-
-    on_gz_ready = RegisterEventHandler(
-        OnExecutionComplete(
-            target_action = wait_gz_ready,
-            on_completion = [
-                LogInfo(msg="[CHEK] Gazebo World READY -> Spawn drone system"),
-                drone_spawn,
-            ]
+    if not launch_file.is_file():
+        raise RuntimeError(
+            f"Launch file '{filename}' was not found in package "
+            f"'{package_name}' at '{launch_file}'."
         )
+
+    return launch_file
+
+
+def get_worlds() -> List[str]:
+    """Return available SDF world names from eolab_description/worlds."""
+    worlds_dir = _get_package_share(DESCRIPTION_PACKAGE) / "worlds"
+
+    if not worlds_dir.is_dir():
+        raise RuntimeError(
+            f"World directory was not found at '{worlds_dir}'."
+        )
+
+    worlds = sorted(
+        world_file.stem
+        for world_file in worlds_dir.glob("*.sdf")
+        if world_file.is_file()
     )
 
-    # TODO: build the agent cmd depending if sim or physical
-    agent_cmd = ["MicroXRCEAgent", "udp4", "-p", "8888"]
+    if not worlds:
+        raise RuntimeError(
+            f"No '.sdf' world files were found in '{worlds_dir}'."
+        )
 
-    if LaunchConfiguration("verbose").perform(context) == "true":
-        agent_cmd.extend(["-v", "4"])
+    if DEFAULT_WORLD not in worlds:
+        raise RuntimeError(
+            f"Default world '{DEFAULT_WORLD}' is not available in "
+            f"'{worlds_dir}'."
+        )
+
+    return worlds
+
+
+def launch_setup(context: LaunchContext):
+    """Select and include the system-specific bringup at launch time."""
+    system = LaunchConfiguration("system").perform(context)
+
+    if system not in (SYSTEM_GZ, SYSTEM_HW):
+        return [
+            LogInfo(
+                msg=(
+                    f"[ERROR] Unsupported system '{system}'. "
+                    f"Expected '{SYSTEM_GZ}' or '{SYSTEM_HW}'."
+                )
+            )
+        ]
+
+    is_gz = system == SYSTEM_GZ
+    bringup_package = (
+        SIM_BRINGUP_PACKAGE if is_gz else HW_BRINGUP_PACKAGE
+    )
+
+    try:
+        single_launch_file = _get_launch_file(
+            COMMON_BRINGUP_PACKAGE,
+            "single.launch.py",
+        )
+        bringup_launch_file = _get_launch_file(
+            bringup_package,
+            "bringup.launch.py",
+        )
+    except RuntimeError as exc:
+        return [LogInfo(msg=str(exc))]
+
+    single = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(str(single_launch_file)),
+        launch_arguments={
+            "system": LaunchConfiguration("system"),
+            "drone": LaunchConfiguration("drone"),
+            "alias": LaunchConfiguration("alias"),
+            "instance": LaunchConfiguration("instance"),
+        }.items(),
+    )
+
+    if is_gz:
+        bringup_arguments = {
+            "drone": LaunchConfiguration("drone"),
+            "alias": LaunchConfiguration("alias"),
+            "instance": LaunchConfiguration("instance"),
+            "x": LaunchConfiguration("x"),
+            "y": LaunchConfiguration("y"),
+            "z": LaunchConfiguration("z"),
+            "lon": LaunchConfiguration("lon"),
+            "lat": LaunchConfiguration("lat"),
+            "alt": LaunchConfiguration("alt"),
+            "verbose": LaunchConfiguration("verbose"),
+            "world": LaunchConfiguration("world"),
+            "skip_world": LaunchConfiguration("skip_world"),
+        }
     else:
-        agent_cmd.extend(["-v", "1"])
+        bringup_arguments = {
+            "verbose": LaunchConfiguration("verbose"),
+        }
 
-    start_agent = ExecuteProcess(
-        cmd=agent_cmd,
-        output="both"
+    bringup = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(str(bringup_launch_file)),
+        launch_arguments=bringup_arguments.items(),
     )
 
-    start_rviz = Node(
-        name="rviz2",
-        package="rviz2",
-        executable="rviz2",
-        condition=IfCondition(LaunchConfiguration("rviz")),
-        arguments=["-d", PathJoinSubstitution([FindPackageShare("eolab_bringup"), "rviz", "default.rviz"])]
-    )
-
-    start_pose = Node(
-        name=f"pose_node_{alias}",
-        namespace=alias,
-        package="eolab_utils",
-        executable="pose",
-        output="both"
-    )
-
-    return [
-        start_gz_world,
-        on_gz_ready,
-        wait_gz_ready,
-        start_agent,
-        start_rviz,
-        start_pose,
-    ]
+    # Preserve the original execution order: common single-drone setup first,
+    # then the selected simulation or hardware bringup.
+    return [single, bringup]
 
 
 def generate_launch_description() -> LaunchDescription:
-
-    ld = LaunchDescription()
-
-    ld.add_action(DeclareLaunchArgument(
-        name="system",
-        default_value=EnvironmentVariable("EOLAB_SYSTEM_TYPE", default_value="gz"),
-        choices=["gz", "physical"],
-        description="Select the components depending on this argument."
-    ))
-
-    ld.add_action(DeclareLaunchArgument(
-        name="drone",
-        default_value=EnvironmentVariable("EOLAB_DRONE_NAME", default_value="protoflyer"),
-        choices=list(eolab_drones.get_drones().keys()),
-        description="Name of the drone to launch"
-    ))
-
-    ld.add_action(DeclareLaunchArgument(
-        name="alias",
-        default_value=LaunchConfiguration("drone"),
-        description="Set a custom alias name different from the drone name"
-    ))
-
-    ld.add_action(DeclareLaunchArgument(
-        name="instance",
-        default_value="0",
-        description="Drone instance."
-    ))
-
-    ld.add_action(DeclareLaunchArgument(
-        name="x",
-        default_value="0.0",
-        description="X position to spawn the drone in sim (ignore in physical system)"
-    ))
-
-    ld.add_action(DeclareLaunchArgument(
-        name="y",
-        default_value="0.0",
-        description="Y position to spawn the drone in sim (ignore in physical system)"
-    ))
-
-    ld.add_action(DeclareLaunchArgument(
-        name="z",
-        default_value="0.8",
-        description="Z position to spawn the drone in sim (ignore in physical system)"
-    ))
-
-    ld.add_action(DeclareLaunchArgument(
-        name="lat",
-        default_value="51.497741558866004",
-        description="GPS Coordinate Latitude in WGS84 (ignore in physical system)"
-    ))
-
-    ld.add_action(DeclareLaunchArgument(
-        name="lon",
-        default_value="6.549182534441797",
-        description="GPS Coordinate Longitude in WGS84 (ignore in physical system)"
-    ))
-
-    ld.add_action(DeclareLaunchArgument(
-        name="alt",
-        default_value="26.54",
-        description="GPS Coordinate Altitude in WGS84 (ignore in physical system)"
-    ))
-
-    ld.add_action(DeclareLaunchArgument(
-        name="world",
-        default_value="empty",
-        choices=get_worlds(),
-        description="Name of the world to launch (without file extension). Only the ones under the `worlds` folder in the pkg `eolab_description`."
-    ))
-
-    ld.add_action(DeclareLaunchArgument(
-        name="skip_world",
-        default_value="false",
-        description="Skip launch the world in simulation."
-    ))
-
-    ld.add_action(DeclareLaunchArgument(
-        name="verbose",
-        default_value="false",
-        description="Verbose launch."
-    ))
-
-    ld.add_action(DeclareLaunchArgument(
-        name="rviz",
-        default_value="true",
-        description="Start RVIZ."
-    ))
-
-
-    ld.add_action(OpaqueFunction(function=launch_setup))
-
-    return ld
+    return LaunchDescription([
+        DeclareLaunchArgument(
+            name="system",
+            default_value=EnvironmentVariable(
+                "EOLAB_SYSTEM",
+                default_value=SYSTEM_GZ,
+            ),
+            choices=[SYSTEM_GZ, SYSTEM_HW],
+            description="Select the simulation or hardware system.",
+        ),
+        DeclareLaunchArgument(
+            name="drone",
+            default_value=EnvironmentVariable(
+                "EOLAB_DRONE",
+                default_value="protoflyer",
+            ),
+            choices=list(eolab_drones.get_drones().keys()),
+            description="Name of the drone to launch.",
+        ),
+        DeclareLaunchArgument(
+            name="alias",
+            default_value=LaunchConfiguration("drone"),
+            description="Custom alias; defaults to the drone name.",
+        ),
+        DeclareLaunchArgument(
+            name="instance",
+            default_value="0",
+            description="Drone instance number (simulation only).",
+        ),
+        DeclareLaunchArgument(
+            name="x",
+            default_value="0.0",
+            description="Drone spawn X position (simulation only).",
+        ),
+        DeclareLaunchArgument(
+            name="y",
+            default_value="0.0",
+            description="Drone spawn Y position (simulation only).",
+        ),
+        DeclareLaunchArgument(
+            name="z",
+            default_value="0.8",
+            description="Drone spawn Z position (simulation only).",
+        ),
+        DeclareLaunchArgument(
+            name="lat",
+            default_value="51.497741558866004",
+            description="WGS84 latitude (simulation only).",
+        ),
+        DeclareLaunchArgument(
+            name="lon",
+            default_value="6.549182534441797",
+            description="WGS84 longitude (simulation only).",
+        ),
+        DeclareLaunchArgument(
+            name="alt",
+            default_value="26.54",
+            description="WGS84 altitude (simulation only).",
+        ),
+        DeclareLaunchArgument(
+            name="world",
+            default_value=DEFAULT_WORLD,
+            choices=get_worlds(),
+            description=(
+                "World name without the file extension. Available worlds "
+                "are loaded from eolab_description/worlds."
+            ),
+        ),
+        DeclareLaunchArgument(
+            name="skip_world",
+            default_value="false",
+            description="Skip launching the simulation world.",
+        ),
+        DeclareLaunchArgument(
+            "camera_follow",
+            default_value="true",
+            choices=["true", "false"],
+            description=(
+                "Enable Gazebo GUI camera follow for single-drone simulation."
+            ),
+        ),
+        DeclareLaunchArgument(
+            name="verbose",
+            default_value="false",
+            description="Enable verbose launch output.",
+        ),
+        DeclareLaunchArgument(
+            name="rviz",
+            default_value="true",
+            description="Start RViz.",
+        ),
+        OpaqueFunction(function=launch_setup),
+    ])

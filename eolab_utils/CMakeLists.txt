@@ -14,14 +14,31 @@ find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
 find_package(px4_msgs REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_ros REQUIRED)
 
-add_executable(pose src/pose.cpp)
-ament_target_dependencies(pose rclcpp std_msgs geometry_msgs nav_msgs px4_msgs)
+add_executable(px4_odom_tf src/px4_odom_tf.cpp)
+ament_target_dependencies(px4_odom_tf rclcpp std_msgs geometry_msgs nav_msgs px4_msgs tf2 tf2_ros)
+
+add_executable(odom_viz src/odom_viz.cpp)
+ament_target_dependencies(odom_viz rclcpp nav_msgs geometry_msgs)
+
+add_executable(px4_to_imu_msg src/px4_to_imu_msg.cpp)
+ament_target_dependencies(px4_to_imu_msg rclcpp sensor_msgs px4_msgs)
 
 install(TARGETS
-    pose
+    px4_odom_tf
+    odom_viz
+    px4_to_imu_msg
     DESTINATION lib/${PROJECT_NAME}
+)
+
+install(DIRECTORY
+    launch
+    config
+    DESTINATION share/${PROJECT_NAME}
 )
 
 if(BUILD_TESTING)

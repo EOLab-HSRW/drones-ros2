@@ -22,7 +22,15 @@
     </inertial>
   </xacro:macro>
 
-  <link name="${root_frame}">
+  <link name="${root_frame}"/>
+
+  <joint name="body_frame_joint" type="fixed">
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <parent link="${root_frame}"/>
+    <child link="body_frame_link"/>
+  </joint>
+
+  <link name="body_frame_link">
     <visual>
       <geometry>
         <mesh filename="file://$(find eolab_description)/drones/meshes/protoflyer.obj" scale="1 1 1"/>

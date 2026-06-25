@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>eolab_bringup</name>
+  <name>eolab_bringup_sim</name>
   <version>0.0.0</version>
   <description>TODO: Package description</description>
   <maintainer email="harley.lara@outlook.com">harley</maintainer>
@@ -9,19 +9,10 @@
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
-  <depend>rclcpp</depend>
-  <exec_depend>launch</exec_depend>
-  <exec_depend>launch_ros</exec_depend>
-  <exec_depend>xacro</exec_depend>
+  <build_depend>rclcpp</build_depend>
+  <build_depend>ros_gz_interfaces</build_depend>
 
-  <!-- `eolab_drones` is our metadata-catalog  -->
-  <!-- is a python package to make it easy to consume -->
-  <!-- inside the launch system. -->
-  <!-- The source code is in: https://github.com/EOLab-HSRW/drones-fw -->
-  <exec_depend>eolab_drones</exec_depend>
-  <exec_depend>eolab_description</exec_depend>
-  <exec_depend>eolab_utils</exec_depend>
-  <exec_depend>px4_msgs</exec_depend>
+  <exec_depend>eolab_bringup</exec_depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
