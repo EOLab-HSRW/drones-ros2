@@ -13,6 +13,8 @@
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
   <exec_depend>xacro</exec_depend>
+  <exec_depend>ament_index_python></exec_depend>
+  <exec_depend>robot_state_publisher</exec_depend>
 
   <!-- `eolab_drones` is our metadata-catalog  -->
   <!-- is a python package to make it easy to consume -->

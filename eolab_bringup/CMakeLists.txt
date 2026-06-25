@@ -8,11 +8,10 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
-find_package(ament_cmake REQUIRED)
 
 include(ExternalProject)
 
-execute_process(COMMAND ${Python_EXECUTABLE} -m pip install "git+https://github.com/EOLab-HSRW/drones-fw.git@main")
+execute_process(COMMAND ${Python3_EXECUTABLE} -m pip install "git+https://github.com/EOLab-HSRW/drones-fw.git@main")
 
 find_program(MICRO_XRCE_AGENT_EXECUTABLE MicroXRCEAgent)
 
