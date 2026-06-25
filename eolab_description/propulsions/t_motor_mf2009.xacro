@@ -22,7 +22,6 @@
           <box size="${prop_diameter} 0.04 0.01"/>
         </geometry>
       </collision>
-      <mass value="${prop_weight}"/>
       <!-- real value heavy-->
       <!-- <mass value="5.5"/> -->
       <xacro:box_inertia m="${prop_weight}" w="${prop_diameter}" h="0.04" d="0.01"/>
