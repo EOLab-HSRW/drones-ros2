@@ -4,9 +4,10 @@ from launch.actions import (
     EmitEvent,
     IncludeLaunchDescription,
     LogInfo,
+    OpaqueFunction,
     RegisterEventHandler,
 )
-from launch.conditions import IfCondition, UnlessCondition
+from launch.conditions import IfCondition
 from launch.event_handlers import OnProcessExit
 from launch.events import Shutdown
 from launch.events.process import ProcessExited
@@ -28,8 +29,7 @@ from eolab_bringup.commons import (
 
 DEFAULT_GZ_READY_TIMEOUT_S = "20.0"
 
-
-def generate_launch_description() -> LaunchDescription:
+def launch_setup(context: LaunchContext):
     drone = LaunchConfiguration("drone")
     alias = LaunchConfiguration("alias")
     instance = LaunchConfiguration("instance")
@@ -43,12 +43,14 @@ def generate_launch_description() -> LaunchDescription:
     altitude = LaunchConfiguration("alt")
 
     world = LaunchConfiguration("world")
-    skip_world = LaunchConfiguration("skip_world")
+    headless_config = LaunchConfiguration("headless")
+    real_time_factor = LaunchConfiguration("real_time_factor")
+    headless = headless_config.perform(context).strip().lower() == "true"
     camera_follow = LaunchConfiguration("camera_follow")
     verbose = LaunchConfiguration("verbose")
     rviz = LaunchConfiguration("rviz")
 
-    gz_ready_timeout = LaunchConfiguration("gz_ready_timeout_s")
+    gz_ready_timeout_s = LaunchConfiguration("gz_ready_timeout_s")
 
     world_launch_file = get_launch_file(
         SIM_BRINGUP_PACKAGE,
@@ -75,26 +77,45 @@ def generate_launch_description() -> LaunchDescription:
             "lat": latitude,
             "lon": longitude,
             "alt": altitude,
+            "headless": headless_config,
+            "real_time_factor": real_time_factor,
             "verbose": verbose,
         }.items(),
-        condition=UnlessCondition(skip_world),
     )
 
-    # Contract:
-    #   exit code 0  -> Gazebo server and GUI are ready
-    #   nonzero      -> timeout or readiness failure
-    wait_gz_full_ready = Node(
-        package=SIM_BRINGUP_PACKAGE,
-        executable="wait_gz_gui_ready",
-        name="wait_gz_gui_ready",
-        parameters=[{
-            "timeout_s": ParameterValue(
-                gz_ready_timeout,
-                value_type=float,
-            ),
-        }],
-        output="screen",
-    )
+    # Headless mode only requires the Gazebo server. GUI mode waits for the
+    # GUI camera topic, which is published once the GUI scene is initialized.
+    if headless:
+        readiness_target = "server"
+        readiness_display = "Server"
+        wait_gz_ready = Node(
+            package=SIM_BRINGUP_PACKAGE,
+            executable="wait_gz_ready",
+            name="wait_gz_ready_for_spawn",
+            parameters=[{
+                "world_name": world,
+                "timeout_s": ParameterValue(
+                    gz_ready_timeout_s,
+                    value_type=float,
+                ),
+            }],
+            output="screen",
+        )
+    else:
+        readiness_target = "GUI"
+        readiness_display = "GUI"
+        wait_gz_ready = Node(
+            package=SIM_BRINGUP_PACKAGE,
+            executable="wait_gz_gui_ready",
+            name="wait_gz_gui_ready_for_spawn",
+            parameters=[{
+                "timeout_s": ParameterValue(
+                    gz_ready_timeout_s,
+                    value_type=float,
+                ),
+            }],
+            output="screen",
+        )
 
     drone_spawn = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(str(drone_spawn_launch_file)),
@@ -107,6 +128,7 @@ def generate_launch_description() -> LaunchDescription:
             "y": position_y,
             "z": position_z,
             "verbose": verbose,
+            "headless": headless_config,
             "camera_follow": camera_follow,
         }.items(),
     )
@@ -133,7 +155,10 @@ def generate_launch_description() -> LaunchDescription:
         if event.returncode == 0:
             return [
                 LogInfo(
-                    msg="[Gazebo] Ready; spawning the drone system."
+                    msg=(
+                        f"[Gazebo] {readiness_display} ready; "
+                        "spawning the drone system."
+                    )
                 ),
                 drone_spawn,
             ]
@@ -149,7 +174,7 @@ def generate_launch_description() -> LaunchDescription:
             EmitEvent(
                 event=Shutdown(
                     reason=(
-                        "Gazebo server and GUI did not become ready."
+                        f"Gazebo {readiness_target} did not become ready."
                     )
                 )
             ),
@@ -157,79 +182,78 @@ def generate_launch_description() -> LaunchDescription:
 
     on_gz_full_ready = RegisterEventHandler(
         OnProcessExit(
-            target_action=wait_gz_full_ready,
+            target_action=wait_gz_ready,
             on_exit=handle_gz_ready_exit,
         )
     )
 
+    return [
+        on_gz_full_ready,
+        start_gz_world,
+        wait_gz_ready,
+        start_rviz,
+    ]
+
+
+def generate_launch_description() -> LaunchDescription:
     return LaunchDescription([
         DeclareLaunchArgument(
             name="drone",
             description="Drone model to start in simulation.",
         ),
-
         DeclareLaunchArgument(
             name="alias",
             description="Runtime alias and ROS namespace for the drone.",
         ),
-
         DeclareLaunchArgument(
             name="instance",
             description="Simulation instance number.",
         ),
-
         DeclareLaunchArgument(
             name="x",
             description="Drone spawn X position.",
         ),
-
         DeclareLaunchArgument(
             name="y",
             description="Drone spawn Y position.",
         ),
-
         DeclareLaunchArgument(
             name="z",
             description="Drone spawn Z position.",
         ),
-
         DeclareLaunchArgument(
             name="lon",
             description="WGS84 longitude.",
         ),
-
         DeclareLaunchArgument(
             name="lat",
             description="WGS84 latitude.",
         ),
-
         DeclareLaunchArgument(
             name="alt",
             description="WGS84 altitude.",
         ),
-
         DeclareLaunchArgument(
             name="verbose",
             choices=BOOLEAN_CHOICES,
             description="Enable verbose simulation output.",
         ),
-
         DeclareLaunchArgument(
             name="world",
             choices=get_worlds(),
             description="Gazebo world name without the file extension.",
         ),
-
         DeclareLaunchArgument(
-            name="skip_world",
+            name="headless",
             default_value="false",
             choices=BOOLEAN_CHOICES,
-            description=(
-                "Do not start Gazebo from this launch file. The readiness "
-                "checker will still wait for an externally started Gazebo."
-            ),
+            description="Run the simulator without a GUI"
         ),
-
+        DeclareLaunchArgument(
+            name="real_time_factor",
+            default_value="1.0",
+            description="Target simulation speed relative to wall time."
+        ),
         DeclareLaunchArgument(
             name="camera_follow",
             default_value="true",
@@ -238,30 +262,17 @@ def generate_launch_description() -> LaunchDescription:
                 "Make the Gazebo GUI camera follow the spawned drone."
             ),
         ),
-
         DeclareLaunchArgument(
             name="rviz",
             default_value="true",
             choices=BOOLEAN_CHOICES,
             description="Start RViz.",
         ),
-
         DeclareLaunchArgument(
             name="gz_ready_timeout_s",
             default_value=DEFAULT_GZ_READY_TIMEOUT_S,
             description="Gazebo readiness timeout in seconds.",
         ),
-
-        # Register the handler before starting the process it observes.
-        on_gz_full_ready,
-
-        # Start Gazebo unless an external instance is requested.
-        start_gz_world,
-
-        # Poll until Gazebo is ready or the timeout expires.
-        wait_gz_full_ready,
-
-        # RViz is independent from Gazebo readiness. It is terminated
-        # automatically if launch shuts down after a readiness failure.
-        start_rviz,
+        OpaqueFunction(function=launch_setup)
     ])
+

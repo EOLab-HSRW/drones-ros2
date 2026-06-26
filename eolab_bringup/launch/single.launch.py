@@ -1,9 +1,42 @@
+"""
+Launch the backend-independent processes required by a single drone instance.
+
+This launch file provides the processes that are common to both simulation and
+hardware deployments/
+
+The file supports two deployment patterns:
+
+
+## Standalone single-drone operation
+---------------------------------
+Run this file directly with ``standalone:=true``. In this mode, it launches the
+common processes for one drone and prints a startup banner describing the
+selected system, drone model, namespace alias, and instance number.
+
+## Composable multi-drone operation
+--------------------------------
+Include this file once per drone with ``standalone:=false``.
+
+In a multi-drone simulation, a parent launch file should include this launch
+file for every simulated drone, assigning each instance a unique ``alias`` and
+``instance`` value.
+
+In a multi-drone hardware deployment, each drone normally runs one instance of
+this launch file on its own companion computer. The same parent experiment
+configuration can therefore be used to start the common per-drone processes in
+both hardware and simulation, while system-specific processes are launched
+separately.
+
+The ``standalone`` argument only controls standalone presentation behavior,
+such as the startup banner. It does not change the set of per-drone nodes
+launched by this file.
+"""
+
 import xacro
 
 from launch import LaunchContext, LaunchDescription
 from launch.actions import (
     DeclareLaunchArgument,
-    LogInfo,
     OpaqueFunction,
 )
 from launch.substitutions import LaunchConfiguration
@@ -26,13 +59,7 @@ def launch_setup(context: LaunchContext):
     alias = LaunchConfiguration("alias").perform(context)
     instance = LaunchConfiguration("instance").perform(context)
 
-    standalone = (
-        LaunchConfiguration("standalone")
-        .perform(context)
-        .strip()
-        .lower()
-        == "true"
-    )
+    standalone = (LaunchConfiguration("standalone").perform(context) == "true")
 
     if system == System.GAZEBO.value:
         mode = "simulation"
@@ -64,17 +91,16 @@ def launch_setup(context: LaunchContext):
 
     if standalone:
         banner = f"""
- _____ ___  _          _
-| ____/ _ \\| |    __ _| |__   System:   {system}
-|  _|| | | | |   / _` | '_ \\  Drone:    {drone}
-| |__| |_| | |__| (_| | |_) | Alias:    {alias}
-|_____\\___/|_____\\__,_|_.__/  Instance: {instance}
-"""
+     _____ ___  _          _
+    | ____/ _ \\| |    __ _| |__   System:   {system}
+    |  _|| | | | |   / _` | '_ \\  Drone:    {drone}
+    | |__| |_| | |__| (_| | |_) | Alias:    {alias}
+    |_____\\___/|_____\\__,_|_.__/  Instance: {instance}
 
-        actions.extend([
-            LogInfo(msg=banner),
-            LogInfo(msg=f"Running in {mode} mode."),
-        ])
+    Running in {mode} mode.
+
+"""
+        print(banner)
 
     actions.extend([
         Node(
@@ -123,22 +149,18 @@ def generate_launch_description() -> LaunchDescription:
             choices=SYSTEM_CHOICES,
             description="Execution system.",
         ),
-
         DeclareLaunchArgument(
             name="drone",
             description="Drone model name.",
         ),
-
         DeclareLaunchArgument(
             name="alias",
             description="ROS namespace assigned to the drone.",
         ),
-
         DeclareLaunchArgument(
             name="instance",
             description="Drone instance number.",
         ),
-
         DeclareLaunchArgument(
             name="standalone",
             default_value="true",
@@ -148,6 +170,5 @@ def generate_launch_description() -> LaunchDescription:
                 "the startup banner."
             ),
         ),
-
         OpaqueFunction(function=launch_setup),
     ])
