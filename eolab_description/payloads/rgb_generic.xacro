@@ -1,42 +1,99 @@
+<?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
 
-  <xacro:include filename="sensor_generic.xacro"/>
+  <!--
+    Generic RGB camera macro:
+      - Mount frame:   ${name}_link            (REP-103 body frame)
+      - Optical frame: ${name}_optical_frame   (x right, y down, z forward)
+      - Static TF: ${name}_link -> ${name}_optical_frame via fixed joint
 
-  <xacro:macro name="rgb_generic" params="name parent_link namespace system *origin">
+    To get exact "camera_link"/"camera_optical_frame" names, call with name="camera".
+    For multiple cameras, use unique names (front_camera, rear_camera, ...).
 
-    <xacro:sensor_generic
-      name="${name}"
-      parent_link="${parent_link}"
-      namespace="${namespace}"
-      system="${system}"
-      mass="0.05"
-      width="0.06"
-      height="0.06"
-      depth="0.1">
+  -->
 
-      <xacro:insert_block name="origin">
-        <origin xyz="0 0 0" rpy="0 0 0"/>
-      </xacro:insert_block>
+  <xacro:macro name="rgb_generic"
+               params="
+                 name
+                 parent_link
+                 namespace:=''
+                 system:='gz'
+                 mass:=0.05
+                 width:=0.06
+                 height:=0.06
+                 depth:=0.10
+                 image_width:='1080'
+                 image_height:='720'
+                 hfov:='1.047'
+                 update_rate:='30'
+                 near:='0.1'
+                 far:='100'
+                 visualize:='true'
+                 *origin">
 
+    <!-- Inertia (simple box approximation) -->
+    <xacro:property name="ixx" value="${(1/12.0) * mass * (height*height + depth*depth)}"/>
+    <xacro:property name="iyy" value="${(1/12.0) * mass * (width*width + depth*depth)}"/>
+    <xacro:property name="izz" value="${(1/12.0) * mass * (width*width + height*height)}"/>
+
+    <!-- Mount / body frame -->
+    <link name="${name}_link">
+      <inertial>
+        <mass value="${mass}"/>
+        <inertia ixx="${ixx}" ixy="0" ixz="0" iyy="${iyy}" iyz="0" izz="${izz}"/>
+      </inertial>
+    </link>
+
+
+    <!-- Parent -> mount fixed joint (your placement) -->
+    <joint name="${name}_joint" type="fixed">
+      <parent link="${parent_link}"/>
+
+      <child link="${name}_link"/>
+      <!-- If caller provides an <origin .../>, it will be inserted here -->
+      <xacro:insert_block name="origin"/>
+    </joint>
+
+
+    <!-- Optical frame + static transform -->
+    <link name="${name}_optical_frame"/>
+    <joint name="${name}_optical_joint" type="fixed">
+      <parent link="${name}_link"/>
+      <child link="${name}_optical_frame"/>
+      <!-- mount (x fwd,y left,z up) -> optical (x right,y down,z fwd) -->
+      <origin xyz="0 0 0" rpy="${-radians(90)} 0 ${-radians(90)}"/>
+    </joint>
+
+    <!-- Gazebo camera sensor (kept generic) -->
+    <xacro:if value="${system == 'gz'}">
       <gazebo reference="${name}_link">
-        <sensor name="${name}_sensor" type='camera'>
+        <sensor name="${name}_sensor" type="camera">
           <camera>
-            <horizontal_fov>1.047</horizontal_fov>
+            <horizontal_fov>${hfov}</horizontal_fov>
             <image>
-              <width>1080</width>
-              <height>720</height>
+              <width>${image_width}</width>
+              <height>${image_height}</height>
             </image>
             <clip>
-              <near>0.1</near>
-              <far>100</far>
+              <near>${near}</near>
+              <far>${far}</far>
             </clip>
           </camera>
           <always_on>1</always_on>
-          <update_rate>30</update_rate>
-          <visualize>true</visualize>
+          <update_rate>${update_rate}</update_rate>
+          <visualize>${visualize}</visualize>
+
+          <!--
+            OPTIONAL:
+            If you use a ROS camera plugin (Gazebo classic gazebo_ros_camera, or a bridge),
+            set its frame to the optical frame, e.g. frameName=${name}_optical_frame.
+            Add your plugin/bridge block here as needed.
+          -->
         </sensor>
       </gazebo>
-    </xacro:sensor_generic>
+    </xacro:if>
+
   </xacro:macro>
 
 </robot>
+
