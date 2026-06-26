@@ -138,6 +138,9 @@ def launch_setup(context: LaunchContext):
         executable="rviz2",
         name="rviz2",
         condition=IfCondition(rviz),
+        parameters=[
+            {"use_sim_time": True}
+        ],
         arguments=[
             "-d",
             str(rviz_config),
