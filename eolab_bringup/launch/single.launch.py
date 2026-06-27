@@ -115,7 +115,7 @@ def launch_setup(context: LaunchContext):
         domain_id = ros_domain_id
         info_msg = "ROS_DOMAIN_ID is set, but value is not a non-negative integer"
 
-    actions.extend(LogInfo(msg=info_msg))
+    actions.extend([LogInfo(msg=info_msg)])
 
     actions.extend([
         Node(
