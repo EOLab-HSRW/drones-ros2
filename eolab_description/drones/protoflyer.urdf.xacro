@@ -46,24 +46,24 @@
 
   <xacro:core_sensors link="${root_frame}_link"/>
 
-  <xacro:rgb_generic name="rgb_camera" parent_link="${root_frame}" system="gz">
+  <xacro:rgb_generic name="rgb_camera" parent_link="${root_frame}_link" system="gz">
     <origin xyz="0 0 -0.05" rpy="0 ${radians(90)} 0"/>
       <!-- rotation in roll to look downward -->
   </xacro:rgb_generic>
 
-  <xacro:dji_e305 number="0" parent="${root_frame}" direction="ccw">
+  <xacro:dji_e305 number="0" parent="${root_frame}_link" direction="ccw">
     <origin xyz="0.158 -0.158 0.05" rpy="0 0 0"/>
   </xacro:dji_e305>
 
-  <xacro:dji_e305 number="1" parent="${root_frame}" direction="ccw">
+  <xacro:dji_e305 number="1" parent="${root_frame}_link" direction="ccw">
     <origin xyz="-0.158 0.158 0.05" rpy="0 0 0"/>
   </xacro:dji_e305>
 
-  <xacro:dji_e305 number="2" parent="${root_frame}" direction="cw">
+  <xacro:dji_e305 number="2" parent="${root_frame}_link" direction="cw">
     <origin xyz="0.158 0.158 0.05" rpy="0 0 0"/>
   </xacro:dji_e305>
 
-  <xacro:dji_e305 number="3" parent="${root_frame}" direction="cw">
+  <xacro:dji_e305 number="3" parent="${root_frame}_link" direction="cw">
     <origin xyz="-0.158 -0.158 0.05" rpy="0 0 0"/>
   </xacro:dji_e305>
 
