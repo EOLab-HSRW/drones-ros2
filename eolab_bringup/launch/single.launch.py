@@ -108,14 +108,12 @@ def launch_setup(context: LaunchContext):
         default_value="",
     ).perform(context)
 
-    if ros_domain_id == "":
-        domain_id = "0"
-    elif not ros_domain_id.isdigit():
-        domain_id = ros_domain_id
-        info_msg = "ROS_DOMAIN_ID is set, but value is not a non-negative integer"
-    else:
+    if ros_domain_id.isdigit():
         domain_id = ros_domain_id
         info_msg = f"ROS_DOMAIN_ID detected: {domain_id}"
+    else:
+        domain_id = ros_domain_id
+        info_msg = "ROS_DOMAIN_ID is set, but value is not a non-negative integer"
 
     actions.extend(LogInfo(msg=info_msg))
 
