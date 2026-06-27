@@ -35,7 +35,7 @@ def launch_setup(context):
             #
             # Extra Note: It looks like the ROS_DOMAIN_ID env var
             # is not applicable to the MicroXRCEAgent.
-            "XRCE_DOMAIN_ID_OVERRIDE": EnvironmentVariable("ROS_DOMAIN_ID"),
+            "XRCE_DOMAIN_ID_OVERRIDE": EnvironmentVariable("ROS_DOMAIN_ID", default_value="0"),
         },
     )
 
