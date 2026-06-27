@@ -8,7 +8,7 @@
 
   <!-- <xacro:arg name="drone_name" default="protoflyer"/> -->
   <!-- <xacro:property name="root_frame" value="$(arg drone_name)_base_link"/> -->
-  <xacro:property name="root_frame" value="base_link"/>
+  <xacro:property name="root_frame" value="body_frame"/>
 
   <xacro:macro name="box_inertial" params="mass x y z xyz:='0 0 0' rpy:='0 0 0'">
     <inertial>
@@ -22,15 +22,15 @@
     </inertial>
   </xacro:macro>
 
-  <link name="${root_frame}"/>
+  <link name="base_link"/>
 
-  <joint name="body_frame_joint" type="fixed">
+  <joint name="${root_frame}_joint" type="fixed">
     <origin xyz="0 0 0" rpy="0 0 0"/>
-    <parent link="${root_frame}"/>
-    <child link="body_frame_link"/>
+    <parent link="base_link"/>
+    <child link="${root_frame}_link"/>
   </joint>
 
-  <link name="body_frame_link">
+  <link name="${root_frame}_link">
     <visual>
       <geometry>
         <mesh filename="file://$(find eolab_description)/drones/meshes/protoflyer.obj" scale="1 1 1"/>
@@ -44,7 +44,7 @@
     <xacro:box_inertial mass="0.5" x="0.4" y="0.4" z="0.4"/>
   </link>
 
-  <xacro:core_sensors link="${root_frame}"/>
+  <xacro:core_sensors link="${root_frame}_link"/>
 
   <xacro:rgb_generic name="rgb_camera" parent_link="${root_frame}" system="gz">
     <origin xyz="0 0 -0.05" rpy="0 ${radians(90)} 0"/>
