@@ -105,7 +105,7 @@ def launch_setup(context: LaunchContext):
 
     ros_domain_id = EnvironmentVariable(
         name="ROS_DOMAIN_ID",
-        default_value="",
+        default_value="0",
     ).perform(context)
 
     if ros_domain_id.isdigit():
