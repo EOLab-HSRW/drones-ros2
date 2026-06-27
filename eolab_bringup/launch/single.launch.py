@@ -37,9 +37,10 @@ import xacro
 from launch import LaunchContext, LaunchDescription
 from launch.actions import (
     DeclareLaunchArgument,
+    LogInfo,
     OpaqueFunction,
 )
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import EnvironmentVariable, LaunchConfiguration
 
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
@@ -101,6 +102,22 @@ def launch_setup(context: LaunchContext):
 
 """
         print(banner)
+
+    ros_domain_id = EnvironmentVariable(
+        name="ROS_DOMAIN_ID",
+        default_value="",
+    ).perform(context)
+
+    if ros_domain_id == "":
+        domain_id = "0"
+    elif not ros_domain_id.isdigit():
+        domain_id = ros_domain_id
+        info_msg = "ROS_DOMAIN_ID is set, but value is not a non-negative integer"
+    else:
+        domain_id = ros_domain_id
+        info_msg = f"ROS_DOMAIN_ID detected: {domain_id}"
+
+    actions.extend(LogInfo(msg=info_msg))
 
     actions.extend([
         Node(

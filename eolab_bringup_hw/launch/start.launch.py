@@ -4,7 +4,7 @@ from launch.actions import (
     ExecuteProcess,
     OpaqueFunction
 )
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import EnvironmentVariable, LaunchConfiguration
 
 def launch_setup(context):
 
@@ -23,7 +23,20 @@ def launch_setup(context):
 
     start_agent = ExecuteProcess(
         cmd=agent_cmd,
-        output="both"
+        output="both",
+        additional_env={
+            # Note: this overwrite only works IF the MicroXRCEClient,
+            # the one running in the flight controller
+            # is configure with `UXRCE_DDS_DOM_ID` set to `255`
+            # See for official docs for client:
+            #   https://micro-xrce-dds.docs.eprosima.com/en/latest/agent.html?highlight=domain#domain-id
+            # See for PX4 client available parameters:
+            #   https://docs.px4.io/main/en/middleware/uxrce_dds#starting-the-client
+            #
+            # Extra Note: It looks like the ROS_DOMAIN_ID env var
+            # is not applicable to the MicroXRCEAgent.
+            "XRCE_DOMAIN_ID_OVERRIDE": EnvironmentVariable("ROS_DOMAIN_ID"),
+        },
     )
 
     return [

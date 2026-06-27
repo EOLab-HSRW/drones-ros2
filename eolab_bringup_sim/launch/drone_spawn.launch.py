@@ -16,7 +16,7 @@ from launch.actions import (
 from launch.event_handlers import OnProcessExit
 from launch.events import Shutdown
 from launch.events.process import ProcessExited
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import EnvironmentVariable, LaunchConfiguration
 from launch_ros.actions import Node
 
 from eolab_bringup.commons import (
@@ -131,6 +131,9 @@ def launch_setup(context: LaunchContext):
                 "4" if verbose else "1",
             ],
             output="both",
+            additional_env={
+                "XRCE_DOMAIN_ID_OVERRIDE": EnvironmentVariable("ROS_DOMAIN_ID"),
+            },
         )
 
 
